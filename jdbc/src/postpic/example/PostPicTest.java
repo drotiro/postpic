@@ -8,9 +8,10 @@ import javax.swing.JLabel;
 
 import org.postgresql.PGConnection;
 import postpic.PGImage;
+import postpic.PostPic;
 
 
-public class Connector {
+public class PostPicTest {
 	
 	String host = "192.168.44.128", 
 		user = "postgres", 
@@ -55,20 +56,29 @@ public class Connector {
 	// TEST METHODS
 	
 	public static void main(String[] args) throws Exception {
-		Connector c = new Connector();
+		PostPicTest c = new PostPicTest();
 		Connection conn = c.getConnection();
+		PostPic pp = new PostPic(conn);
+		System.out.println("Version: "+pp.getVersionString()+" ("+pp.getPostPicRelease()
+				+"."+pp.getPostPicMajor()+"."+pp.getPostPicMinor()+")");
+		if(pp.isRegistered()) {
+			System.out.println("Autoreg OK");
+		} else {
+			System.out.println("Autoreg failed, trying manual");
+			pp.registerManual();
+		}
 		PreparedStatement st = conn.prepareStatement("select the_img as image, name from images");
 		ResultSet rs = st.executeQuery();
 		while(rs.next()) {
 			Object o = rs.getObject("image");
 			if(o instanceof PGImage) {
 				PGImage i = (PGImage)o;
-				System.out.println("Image data: "+i.getValue()+" sqltype: "+i.getType()
-						+" "+i.getWidth()+"x"+i.getHeight()+" taken at: "+i.getDate());
+				System.out.println("Image data: "+i.getWidth()+"x"+i.getHeight()
+						+" taken at: "+i.getDate());
 				Image img = i.getImage((PGConnection)conn);
 				display(img, rs.getString("name"));
 			} else {
-				System.out.println("Autoreg failed.\nImage class: "+o.getClass().getCanonicalName());
+				System.out.println("Registration failed.\nImage class: "+o.getClass().getCanonicalName());
 			}
 		}
 		rs.close();
