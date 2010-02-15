@@ -1,13 +1,13 @@
-SUBDIRS = server 
+SUBDIRS = server utils
 
 postpic:
-	$(foreach i,$(SUBDIRS), make -C $i)
+	$(foreach i,$(SUBDIRS), make -C $i; )
 
 jdbc:
 	ant -f jdbc/build.xml
 	
 clean:
-	$(foreach i,$(SUBDIRS), make -C $i clean)
+	$(foreach i,$(SUBDIRS), make -C $i clean ;)
 
 jdbc-clean:
 	ant -f jdbc/build.xml clean
