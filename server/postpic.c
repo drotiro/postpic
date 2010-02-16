@@ -251,7 +251,7 @@ char*		pp_timestamp2str(Timestamp ts)
 	char * res = palloc(DATELEN);
 	
 	timestamp2tm(ts, &tzp, &tm, &fsec , &tzn, NULL);
-	sprintf(res, "%d-%d-%d %d:%d:%d", tm.tm_year, tm.tm_mon, tm.tm_mday,
+	sprintf(res, "%d-%.2d-%.2d %.2d:%.2d:%.2d", tm.tm_year, tm.tm_mon, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
 	return res;
 }
