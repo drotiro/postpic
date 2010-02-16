@@ -1,6 +1,9 @@
 /*******************************
  PostPic - An image-enabling
  extension for PostgreSql
+ 
+ Author:	Domenico Rotiroti
+ License:	LGPLv3
 *******************************/
 
 /* PG-related includes */

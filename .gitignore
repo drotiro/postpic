@@ -1,0 +1,5 @@
+#Don't track binaries
+*.o
+*.so
+build
+dist

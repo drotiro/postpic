@@ -2,13 +2,16 @@ CFLAGS = -I `pg_config --includedir`
 LIBS = -L `pg_config --libdir` -lpq
 
 UTILS = postpic_import
-
+postpic_import_OBJS = postpic_import.o postpic_utils.o
 
 all:	${UTILS}
 
+.SECONDEXPANSION:
+${UTILS}:	$$($$@_OBJS)
+	gcc -o $@ ${$@_OBJS} ${LIBS}
 
-postpic_import:	postpic_import.o
-	gcc -o $@ $< ${LIBS}
+postpic_import.o:	postpic_import.c postpic_utils.h
+postpic_utils.o:	postpic_utils.c postpic_utils.h
 
 .c.o:
 	gcc $(CFLAGS) -c $< -o $@

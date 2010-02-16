@@ -1,12 +1,25 @@
-#include <libpq-fe.h>
+/*******************************
+ PostPic - An image-enabling
+ extension for PostgreSql
+  
+ Author:    Domenico Rotiroti
+ License:   LGPLv3
+ 
+ Import images from client file
+ system to server
+*******************************/
+
+#include "postpic_utils.h"
 #include <libpq/libpq-fs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
-void pp_usage(const char * argv0)
+static pp_connect_options opts;
+
+void pp_import_usage()
 {
-	fprintf(stderr, "Usage: %s <filename>\n", argv0);
+	fprintf(stderr, "Additional parameters needed: <filename>\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -24,19 +37,29 @@ int main(int argc, char * argv[])
 {
 	FILE * file;
 	Oid loid;
+	PGconn * conn;
+	char * pname = argv[0];
 	
 	// parse input and open file
-	if(argc<2 || argv[1][0]=='-') {
-		pp_usage(argv[0]);
+	if(pp_parse_connect_options(&argc, &argv, &opts)) {
+		pp_import_usage(pname);
 	}
-	file = pp_open(argv[1]);
+	conn = pp_connect(&opts);
+	if(PQstatus(conn)!=CONNECTION_OK) {
+		fprintf(stderr, "Cannot connect to database using given parameters\n");
+		return -1;
+	}
+	
+	file = pp_open(argv[0]);
 	if(!file) {
-		fprintf(stderr, "Cannot open input file %s\n", argv[1]);
+		fprintf(stderr, "Cannot open input file %s\n", argv[0]);
+		PQfinish(conn);
 		return -1;
 	}
 	
 	// import into server
 	loid = pp_import(file);
+	PQfinish(conn);
 	fclose(file);
 
 	// print out the result
