@@ -23,22 +23,26 @@ void pp_import_usage()
 	exit(EXIT_FAILURE);
 }
 
-FILE * pp_open(const char * fname)
+Oid pp_import(PGconn * conn, const char * file)
 {
-	return fopen(fname, "r");
-}
-
-Oid pp_import(FILE * file)
-{
-	return InvalidOid;
+	PGresult   *res;
+	Oid loid;
+	
+	res = PQexec(conn, "begin");
+	PQclear(res);
+	loid = lo_import(conn, file);
+	res = PQexec(conn, "end");
+	PQclear(res);	
+	
+	return loid;
 }
 
 int main(int argc, char * argv[])
 {
-	FILE * file;
 	Oid loid;
 	PGconn * conn;
 	char * pname = argv[0];
+	char * file;
 	
 	// parse input and open file
 	if(pp_parse_connect_options(&argc, &argv, &opts)) {
@@ -50,23 +54,21 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 	
-	file = pp_open(argv[0]);
+	// import into server
+	file = argv[0];
 	if(!file) {
-		fprintf(stderr, "Cannot open input file %s\n", argv[0]);
+		pp_import_usage();
 		PQfinish(conn);
 		return -1;
 	}
-	
-	// import into server
-	loid = pp_import(file);
+	loid = pp_import(conn, file);
 	PQfinish(conn);
-	fclose(file);
 
 	// print out the result
 	if(loid==InvalidOid) {
-		printf("null_image()");
+		printf("null_image()\n");
 	} else {
-		printf("%ld", (long)loid);
+		printf("%ld\n", (long)loid);
 	}
 	
 	return 0;
