@@ -17,6 +17,7 @@ This package contains the following:
  * utils: utilities for client-side loading of images, etc.
  * jdbc: mapping for the new type, enhances the postgresql jdbc driver
  * doc: instruction for building the sources and other documentation
+ * examples: samples to get stared
 
 
 License

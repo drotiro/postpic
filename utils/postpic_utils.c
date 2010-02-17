@@ -45,6 +45,7 @@ int pp_parse_connect_options (int *argc, char ** argv[], pp_connect_options * op
 		}
 	}
 	(*argv) += optind;
+	(*argc) -= optind;
 	return 0;
 }
 

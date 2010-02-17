@@ -19,22 +19,20 @@ static pp_connect_options opts;
 
 void pp_import_usage()
 {
-	fprintf(stderr, "Additional parameters needed: <filename>\n");
+	fprintf(stderr, "Additional parameters: <filename> [<filename> ...]\n");
 	exit(EXIT_FAILURE);
 }
 
-Oid pp_import(PGconn * conn, const char * file)
+void pp_import(PGconn * conn, const char * file)
 {
-	PGresult   *res;
 	Oid loid;
-	
-	res = PQexec(conn, "begin");
-	PQclear(res);
+
 	loid = lo_import(conn, file);
-	res = PQexec(conn, "end");
-	PQclear(res);	
-	
-	return loid;
+		if(loid==InvalidOid) {
+		printf("null_image()\n");
+	} else {
+		printf("%ld\n", (long)loid);
+	}
 }
 
 int main(int argc, char * argv[])
@@ -43,6 +41,8 @@ int main(int argc, char * argv[])
 	PGconn * conn;
 	char * pname = argv[0];
 	char * file;
+	PGresult   *res;
+	int i;
 	
 	// parse input and open file
 	if(pp_parse_connect_options(&argc, &argv, &opts)) {
@@ -54,22 +54,20 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 	
-	// import into server
-	file = argv[0];
-	if(!file) {
+	// import files into server
+	if(!argc) {
 		pp_import_usage();
 		PQfinish(conn);
 		return -1;
 	}
-	loid = pp_import(conn, file);
+	res = PQexec(conn, "begin");
+	PQclear(res);
+	for(i = 0; i < argc; ++i) {
+		pp_import(conn, argv[i]);
+	}
+	res = PQexec(conn, "end");
+	PQclear(res);	
 	PQfinish(conn);
 
-	// print out the result
-	if(loid==InvalidOid) {
-		printf("null_image()\n");
-	} else {
-		printf("%ld\n", (long)loid);
-	}
-	
 	return 0;
 }
