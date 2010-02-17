@@ -90,7 +90,7 @@ Datum       image_in(PG_FUNCTION_ARGS)
 {
 	char * oidstr = PG_GETARG_CSTRING(0);
 	Oid loid;
-	PPImage * img = (PPImage *) palloc(sizeof(img));
+	PPImage * img = (PPImage *) palloc(sizeof(PPImage));
 	Image * gimg;
 	
 	sscanf(oidstr, "%d", &loid);
@@ -115,7 +115,7 @@ PG_FUNCTION_INFO_V1(image_create_from_loid);
 Datum		image_create_from_loid(PG_FUNCTION_ARGS)
 {
 	Oid loid = PG_GETARG_OID(0);
-	PPImage * img = palloc(sizeof(img));
+	PPImage * img = palloc(sizeof(PPImage));
 	Image * gimg = gm_image_from_lob(loid);
 	
 	pp_init_image(img, gimg);
@@ -243,14 +243,17 @@ Timestamp	pp_str2timestamp(const char * edate)
 char*		pp_timestamp2str(Timestamp ts)
 {
 	/* postgres tax */
-	//struct pg_tz atz;
 	int tzp;
 	fsec_t fsec;
 	char *tzn;
 	/* end tax */
 	struct pg_tm tm;
-	char * res = palloc(DATELEN);
+	char * res; 
 	
+	if(TIMESTAMP_IS_NOBEGIN(ts)) {
+    	return pstrdup("1970-01-01 01:00:00");
+	}
+	res = palloc(DATELEN);
 	timestamp2tm(ts, &tzp, &tm, &fsec , &tzn, NULL);
 	sprintf(res, "%d-%.2d-%.2d %.2d:%.2d:%.2d", tm.tm_year, tm.tm_mon, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
