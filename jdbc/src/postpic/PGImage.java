@@ -44,7 +44,7 @@ public class PGImage extends PGobject {
 		String [] parts = value.split("\\|");
 		loid = Long.parseLong(parts[0]);
 		if(parts.length >= 4) {
-			date = Timestamp.valueOf(parts[1]);
+			try { date = Timestamp.valueOf(parts[1]); } catch (Exception e) {date = new Timestamp(0); }
 			width = Integer.parseInt(parts[2]);
 			height = Integer.parseInt(parts[3]);
 		}

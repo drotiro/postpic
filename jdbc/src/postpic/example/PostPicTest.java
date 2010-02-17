@@ -67,7 +67,8 @@ public class PostPicTest {
 			System.out.println("Autoreg failed, trying manual");
 			pp.registerManual();
 		}
-		PreparedStatement st = conn.prepareStatement("select the_img as image, name from images");
+		String sql = "select the_img as image, name from images";
+		PreparedStatement st = conn.prepareStatement(sql);
 		ResultSet rs = st.executeQuery();
 		while(rs.next()) {
 			Object o = rs.getObject("image");
