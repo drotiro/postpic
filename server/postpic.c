@@ -226,7 +226,8 @@ Timestamp	pp_str2timestamp(const char * edate)
 	
 	if(strlen(edate)<19) {
 	    elog(WARNING, "could not parse date %s", edate);
-	    return (Timestamp)0;
+	    TIMESTAMP_NOBEGIN(res);
+	    return res;
 	}
 	date = pstrdup(edate);
 	tm.tm_year = pp_substr2int(date, 0, 4);
@@ -269,7 +270,11 @@ void	pp_init_image(PPImage * img, Image * gimg)
 	
 	//Data read from attributes
 	date = gm_image_getattr(gimg, ATTR_TIME);
-	img->date = pp_str2timestamp(date);
+	if(date) {
+		img->date = pp_str2timestamp(date);
+    } else {
+    	TIMESTAMP_NOBEGIN(img->date);
+    }
 }
 
 FILE *	lo_copy_out(Oid loid)
