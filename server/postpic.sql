@@ -71,3 +71,21 @@ $BODY$BEGIN
 END$BODY$
 LANGUAGE 'plpgsql';
 
+CREATE OR REPLACE FUNCTION size ( i image )
+	RETURNS INT AS
+$BODY$
+DECLARE
+	w INT;
+	h INT;
+BEGIN
+	SELECT INTO w,h width(i), height(i);
+	IF (w > h) THEN
+		RETURN w;
+	ELSE
+		RETURN h;
+	END IF;
+END
+$BODY$
+LANGUAGE 'plpgsql';
+
+	
