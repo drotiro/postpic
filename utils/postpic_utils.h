@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #define BUFSIZE 4096
+#define CONNECTOPTS "U:P:h:d:"
 
 typedef struct pp_connect_options {
 	char * host;
@@ -25,8 +26,7 @@ typedef struct pp_connect_options {
 	char * dbname;
 } pp_connect_options;
 
-
-int pp_parse_connect_options (int *argc, char ** argv[], pp_connect_options * opts);
+void pp_parse_connect_opt(char c, pp_connect_options * opts);
 
 PGconn * pp_connect(pp_connect_options * opts);
 

@@ -21,32 +21,21 @@ void pp_print_usage(const char *pname)
 		"\t-d database\n");
 }
 
-int pp_parse_connect_options (int *argc, char ** argv[], pp_connect_options * opts)
-{
-	int c;
-	
-	while((c = getopt(*argc, *argv, "U:P:h:d:")) != -1) {
-		switch(c) {
-			case 'U':
-				opts->user = optarg;
-				break;
-			case 'P':
-				opts->password = optarg;
-				break;
-			case 'h':
-				opts->host = optarg;
-				break;
-			case 'd':
-				opts->dbname = optarg;
-				break;
-			default:
-				pp_print_usage((*argv)[0]);
-				return 1;			
+void pp_parse_connect_opt(char c, pp_connect_options * opts) {
+	switch(c) {
+		case 'U':
+			opts->user = optarg;
+			break;
+		case 'P':
+			opts->password = optarg;
+			break;
+		case 'h':
+			opts->host = optarg;
+			break;
+		case 'd':
+			opts->dbname = optarg;
+			break;
 		}
-	}
-	(*argv) += optind;
-	(*argc) -= optind;
-	return 0;
 }
 
 #define PP_ADDPROP(NAME) if(opts->NAME) { strcat(buf, " " #NAME " = "); strcat(buf,opts->NAME); }
