@@ -35,7 +35,6 @@ LANGUAGE 'plpgsql';
 CREATE OR REPLACE TRIGGER t_delete_image AFTER DELETE ON images 
 	FOR EACH ROW EXECUTE PROCEDURE on_delete_image();
 
-
 -- A sample callback for postpic_import and related funcs
 CREATE OR REPLACE FUNCTION basename(ipath varchar)
 	RETURNS	VARCHAR	AS
@@ -53,7 +52,7 @@ BEGIN
 	RETURN path;
 END
 $BODY$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION image_add_to_album(ii integer, aname varchar)
 	RETURNS VOID AS
@@ -88,6 +87,45 @@ EXCEPTION
 END
 $BODY$
 LANGUAGE 'plpgsql';
+
+-- Helpful funcs
+
+CREATE OR REPLACE FUNCTION images_by_month(OUT month DOUBLE PRECISION, OUT month DOUBLE PRECISION, OUT photos BIGINT) 
+RETURNS SETOF RECORD AS $$
+	SELECT date_part('year', date(the_img)) AS year, date_part('month', date(the_img)) AS month, count(*) AS photos 
+	FROM images 
+	GROUP BY year, month 
+	ORDER BY year, month
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION album_id( alb varchar )
+RETURNS INTEGER AS
+$BODY$
+DECLARE
+	ai INTEGER;
+BEGIN
+	SELECT INTO ai aid FROM albums WHERE name=alb;
+	RETURN ai;
+END;
+$BODY$
+language 'plpgsql' STABLE;
+
+CREATE OR REPLACE FUNCTION in_album( ii integer, ai integer )
+	RETURNS BOOLEAN AS
+$BODY$
+DECLARE
+	cnt INTEGER;
+BEGIN
+	SELECT INTO cnt count(*) FROM album_images WHERE aid=ai AND iid=ii;
+	IF (cnt = 1) THEN
+		RETURN TRUE;
+	ELSE
+		RETURN FALSE;
+	END IF;
+END
+$BODY$
+language 'plpgsql' STABLE;
+
 
 -- To test server-side import
 CREATE OR REPLACE FUNCTION test_insert ( ipath varchar, iname varchar )

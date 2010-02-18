@@ -69,7 +69,7 @@ CREATE OR REPLACE FUNCTION null_image()
 $BODY$BEGIN
    RETURN image_create_from_loid(0);
 END$BODY$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION size ( i image )
 	RETURNS INT AS
@@ -86,6 +86,6 @@ BEGIN
 	END IF;
 END
 $BODY$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' IMMUTABLE;
 
 	
