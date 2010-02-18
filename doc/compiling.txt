@@ -21,7 +21,7 @@ GraphicsMagick library. If you install them via your operating system's
 package manager, be sure to install the development packages too.
 
 Eg.
-	sudo apt-get libgraphicsmagick-dev postgresql-server-dev-8.4
+	sudo apt-get install libgraphicsmagick-dev postgresql-server-dev-8.4
 
 Before compiling PostPic, the following programs should be in your path:
  * GraphicsMagick-config
