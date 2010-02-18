@@ -176,6 +176,7 @@ PG_FUNCTION_INFO_V1(image_date);
 Datum		image_date(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	if(TIMESTAMP_IS_NOBEGIN(img->date)) PG_RETURN_NULL();
 	PG_RETURN_TIMESTAMP(img->date);
 }
 
@@ -251,7 +252,8 @@ char*		pp_timestamp2str(Timestamp ts)
 	char * res; 
 	
 	if(TIMESTAMP_IS_NOBEGIN(ts)) {
-    	return pstrdup("1970-01-01 01:00:00");
+		//return pstrdup("1970-01-01 01:00:00");
+		return pstrdup("");
 	}
 	res = palloc(DATELEN);
 	timestamp2tm(ts, &tzp, &tm, &fsec , &tzn, NULL);

@@ -67,7 +67,7 @@ public class PostPicTest {
 			System.out.println("Autoreg failed, trying manual");
 			pp.registerManual();
 		}
-		String sql = "select the_img as image, name from images";
+		String sql = "select the_img as image, name , date(the_img) as ts from images i join album_images a on a.iid=i.iid and aid=2 where size(the_img)>1600";
 		PreparedStatement st = conn.prepareStatement(sql);
 		ResultSet rs = st.executeQuery();
 		while(rs.next()) {
