@@ -90,7 +90,7 @@ LANGUAGE 'plpgsql';
 
 -- Helpful funcs
 
-CREATE OR REPLACE FUNCTION images_by_month(OUT month DOUBLE PRECISION, OUT month DOUBLE PRECISION, OUT photos BIGINT) 
+CREATE OR REPLACE FUNCTION images_by_month(OUT year DOUBLE PRECISION, OUT month DOUBLE PRECISION, OUT photos BIGINT) 
 RETURNS SETOF RECORD AS $$
 	SELECT date_part('year', date(the_img)) AS year, date_part('month', date(the_img)) AS month, count(*) AS photos 
 	FROM images 
