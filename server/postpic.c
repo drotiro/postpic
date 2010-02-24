@@ -82,7 +82,8 @@ int			pp_substr2int(char * str, int off, int len);
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
 void		gm_image_destroy(Image *);
-FILE *		lo_copy_out(Oid loid);
+void *		lo_readblob(Oid loid, int * len);
+int			lo_size(LargeObjectDesc * lod);
 
 
 PG_FUNCTION_INFO_V1(image_in);
@@ -185,16 +186,15 @@ Image *		gm_image_from_lob(Oid loid)
 	ExceptionInfo ex;
 	ImageInfo * iinfo;
 	Image * res;
-	FILE * tmpf;
+	int blen;
+	void * blob;
 
 	if(!OidIsValid(loid)) return NULL;
 	//elog(NOTICE, "Reading image from lob %d", loid);
 	GetExceptionInfo(&ex);
 	iinfo = CloneImageInfo(NULL);
-	tmpf = lo_copy_out(loid);
-	iinfo->file = tmpf;
-	res = ReadImage(iinfo, &ex);
-	fclose(tmpf);
+	blob = lo_readblob(loid, &blen);
+	res = BlobToImage(iinfo, blob, blen,  &ex); 
 	DestroyImageInfo(iinfo);
 	DestroyExceptionInfo(&ex);
 
@@ -252,7 +252,6 @@ char*		pp_timestamp2str(Timestamp ts)
 	char * res; 
 	
 	if(TIMESTAMP_IS_NOBEGIN(ts)) {
-		//return pstrdup("1970-01-01 01:00:00");
 		return pstrdup("");
 	}
 	res = palloc(DATELEN);
@@ -282,24 +281,30 @@ void	pp_init_image(PPImage * img, Image * gimg)
     }
 }
 
-FILE *	lo_copy_out(Oid loid)
+int		lo_size(LargeObjectDesc * lod)
 {
-	FILE * lc = tmpfile();
-	int			nbytes, tmp;
-	char		buf[BUFSIZE];
+	inv_seek(lod, 0, SEEK_END);
+	return inv_tell(lod);
+}
 
+void *	lo_readblob(Oid loid, int * blen)
+{
+	void * buf;
+	int size;
+	int tmp;
+	
 	LargeObjectDesc * lod = inv_open(loid, INV_READ, CurrentMemoryContext);
-
-	while ((nbytes = inv_read(lod, buf, BUFSIZE)) > 0)
-	{
-		tmp = fwrite(buf, 1, nbytes, lc);
-		if (tmp != nbytes)
+	size = lo_size(lod);
+	inv_seek(lod, 0, SEEK_SET);
+	*blen = size;
+	buf = palloc(size);
+    if(!buf) {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_OBJECT),
-                 errmsg("error reading from large object: %d", loid)));
-	}
+        	(errcode(ERRCODE_UNDEFINED_OBJECT),
+			 errmsg("error reading from large object: %d", loid)));
+    }
+	tmp = inv_read(lod, buf, size);
 	inv_close(lod);
-	//let's reset lc
-	//fseek(lc, 0, SEEK_SET);
-	return lc;
+	
+	return buf;
 }
