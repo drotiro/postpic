@@ -35,7 +35,11 @@ typedef struct {
  Timestamp	date;
  int4	width;
  int4	height;
- //int4	iso;
+ int4	cspace;
+ int4	iso;
+ double	f_number;
+ double exposure_t;
+ double focal_l;
 } PPImage;
 
 /* Some constant */
@@ -44,6 +48,8 @@ typedef struct {
 #define DATELEN		20
 #define VERLEN		128
 #define ATTR_TIME	"EXIF:DateTimeOriginal"
+#define ATTR_EXPT	"EXIF:ExposureTime"
+#define ATTR_FNUM	"EXIF:FNumber"
 #define	PP_VERSION_RELEASE	1
 #define	PP_VERSION_MAJOR	0
 #define	PP_VERSION_MINOR	0
@@ -79,6 +85,7 @@ void		pp_init_image(PPImage * img, Image * gimg);
 Timestamp	pp_str2timestamp(const char * date);
 char*		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
+double		pp_parse_double(const char * str);
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
 void		gm_image_destroy(Image *);
@@ -107,8 +114,9 @@ Datum       image_out(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
 	char * out = palloc(3*OIDLEN+DATELEN);
-	sprintf(out, "%d|%s|%d|%d", img->imgdata, 
-		pp_timestamp2str(img->date), img->width, img->height);
+	sprintf(out, "%d|%s|%d|%d|%f|%f", img->imgdata, 
+		pp_timestamp2str(img->date), img->width, img->height,
+		img->f_number, img->exposure_t);
 	PG_RETURN_CSTRING(out);	
 }
 
@@ -261,9 +269,17 @@ char*		pp_timestamp2str(Timestamp ts)
 	return res;
 }
 
+double pp_parse_double(const char * str)
+{
+    float s=0,g=1;
+    if(index(str, '/')==NULL) return strtod(str,NULL);
+    sscanf(str, "%f/%f", &s, &g);
+    return s/g;
+}
+
 void	pp_init_image(PPImage * img, Image * gimg)
 {
-	char * date;
+	char * attr;
 
 	memset(img, 0, sizeof(img));
 	if(!gimg) return;
@@ -273,13 +289,22 @@ void	pp_init_image(PPImage * img, Image * gimg)
 	img->height = gimg->rows;
 	
 	//Data read from attributes
-	date = gm_image_getattr(gimg, ATTR_TIME);
-	if(date) {
-		img->date = pp_str2timestamp(date);
+	attr = gm_image_getattr(gimg, ATTR_TIME);
+	if(attr) {
+		img->date = pp_str2timestamp(attr);
     } else {
     	TIMESTAMP_NOBEGIN(img->date);
     }
+    attr = gm_image_getattr(gimg, ATTR_FNUM);
+    if(attr) {
+    	img->f_number = pp_parse_double(attr);
+	}
+	attr = gm_image_getattr(gimg, ATTR_EXPT);
+	if(attr) {
+    	img->exposure_t = pp_parse_double(attr);
+	}
 }
+
 
 int		lo_size(LargeObjectDesc * lod)
 {
@@ -308,3 +333,13 @@ void *	lo_readblob(Oid loid, int * blen)
 	
 	return buf;
 }
+
+/*
+ * The easyest way to check...
+ */
+/*
+void _PG_init()
+{
+	elog(NOTICE, "type image's size is: %d", sizeof(PPImage));
+}
+*/

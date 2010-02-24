@@ -15,7 +15,7 @@ CREATE FUNCTION image_out ( image )
 CREATE TYPE image (
    input = image_in,
    output = image_out,
-   internallength = 20
+   internallength = 52
 );
 
 CREATE FUNCTION image_create_from_loid( oid )

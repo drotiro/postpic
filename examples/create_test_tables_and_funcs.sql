@@ -1,4 +1,4 @@
---DROP TABLE images;
+DROP TABLE images CASCADE;
 CREATE TABLE images (
 		iid		SERIAL NOT NULL,
 		the_img	IMAGE,
@@ -6,7 +6,7 @@ CREATE TABLE images (
 		CONSTRAINT pk_images PRIMARY KEY (iid)
 );
 
---DROP TABLE albums;
+DROP TABLE albums CASCADE;
 CREATE TABLE albums (
 	aid		SERIAL NOT NULL,
 	name	varchar(128) not null,
@@ -15,11 +15,13 @@ CREATE TABLE albums (
 	CONSTRAINT pk_albums PRIMARY KEY (aid)
 );
 
---DROP TABLE album_images;
+DROP TABLE album_images CASCADE;
 CREATE TABLE album_images (
 	aid		INTEGER NOT NULL,
 	iid		INTEGER NOT NULL,
-	CONSTRAINT pk_album_images PRIMARY KEY (aid, iid)
+	CONSTRAINT pk_album_images PRIMARY KEY (aid, iid),
+	CONSTRAINT fk_ai_albums FOREIGN KEY (aid) REFERENCES albums (aid),
+	CONSTRAINT fk_ai_images FOREIGN KEY (iid) REFERENCES images (iid)
 );
 
 CREATE OR REPLACE FUNCTION on_delete_image() RETURNS TRIGGER AS 
@@ -32,7 +34,8 @@ EXCEPTION
 END$BODY$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE TRIGGER t_delete_image AFTER DELETE ON images 
+DROP TRIGGER t_delete_image ON images;
+CREATE TRIGGER t_delete_image AFTER DELETE ON images 
 	FOR EACH ROW EXECUTE PROCEDURE on_delete_image();
 
 -- A sample callback for postpic_import and related funcs
