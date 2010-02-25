@@ -37,9 +37,9 @@ typedef struct {
  int4	height;
  int4	cspace;
  int4	iso;
- double	f_number;
- double exposure_t;
- double focal_l;
+ float4	f_number;
+ float4 exposure_t;
+ float4 focal_l;
 } PPImage;
 
 /* Some constant */
@@ -78,6 +78,9 @@ Datum		image_width(PG_FUNCTION_ARGS);
 Datum		image_height(PG_FUNCTION_ARGS);
 Datum		image_oid(PG_FUNCTION_ARGS);
 Datum		image_date(PG_FUNCTION_ARGS);
+Datum		image_f_number(PG_FUNCTION_ARGS);
+Datum		image_exposure_time(PG_FUNCTION_ARGS);
+Datum		image_iso(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -86,7 +89,7 @@ void		pp_init_image(PPImage * img, Image * gimg);
 Timestamp	pp_str2timestamp(const char * date);
 char*		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
-double		pp_parse_double(const char * str);
+float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
@@ -191,6 +194,36 @@ Datum		image_date(PG_FUNCTION_ARGS)
 	PG_RETURN_TIMESTAMP(img->date);
 }
 
+PG_FUNCTION_INFO_V1(image_f_number);
+Datum		image_f_number(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->f_number > 0) {
+    	PG_RETURN_FLOAT4(img->f_number);
+	}
+	PG_RETURN_NULL();
+}
+
+PG_FUNCTION_INFO_V1(image_exposure_time);
+Datum		image_exposure_time(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->exposure_t > 0) {
+        PG_RETURN_FLOAT4(img->exposure_t);
+    }
+    PG_RETURN_NULL();
+}
+
+PG_FUNCTION_INFO_V1(image_iso);
+Datum		image_iso(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->iso > 0) {
+        PG_RETURN_INT32(img->iso);
+    }
+    PG_RETURN_NULL();
+}
+
 Image *		gm_image_from_lob(Oid loid)
 {
 	ExceptionInfo ex;
@@ -271,7 +304,7 @@ char*		pp_timestamp2str(Timestamp ts)
 	return res;
 }
 
-double		pp_parse_double(const char * str)
+float4		pp_parse_float(const char * str)
 {
     float s=-1,g=1;
     if(!str || !str[0]) return -1;
@@ -301,9 +334,9 @@ void	pp_init_image(PPImage * img, Image * gimg)
 	attr = gm_image_getattr(gimg, ATTR_TIME);
 	img->date = pp_str2timestamp(attr);
     attr = gm_image_getattr(gimg, ATTR_FNUM);
-   	img->f_number = pp_parse_double(attr);
+   	img->f_number = pp_parse_float(attr);
 	attr = gm_image_getattr(gimg, ATTR_EXPT);
-   	img->exposure_t = pp_parse_double(attr);
+   	img->exposure_t = pp_parse_float(attr);
    	attr = gm_image_getattr(gimg, ATTR_ISO);
    	img->iso = pp_parse_int(attr);
 }

@@ -15,7 +15,7 @@ CREATE FUNCTION image_out ( image )
 CREATE TYPE image (
    input = image_in,
    output = image_out,
-   internallength = 52
+   internallength = 40
 );
 
 CREATE FUNCTION image_create_from_loid( oid )
@@ -41,6 +41,21 @@ CREATE FUNCTION oid ( image )
 CREATE FUNCTION date ( image )
    RETURNS TIMESTAMP
    AS '$libdir/postpic', 'image_date'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION f_number ( image )
+   RETURNS FLOAT4
+   AS '$libdir/postpic', 'image_f_number'
+   LANGUAGE C IMMUTABLE STRICT;
+   
+CREATE FUNCTION exposure_time ( image )
+   RETURNS FLOAT4
+   AS '$libdir/postpic', 'image_exposure_time'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION iso ( image )
+   RETURNS INT
+   AS '$libdir/postpic', 'image_iso'
    LANGUAGE C IMMUTABLE STRICT;
 
 CREATE FUNCTION postpic_version ( )
