@@ -6,7 +6,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
-import org.postgresql.PGConnection;
 import postpic.PGImage;
 import postpic.PostPic;
 
@@ -67,7 +66,7 @@ public class PostPicTest {
 			System.out.println("Autoreg failed, trying manual");
 			pp.registerManual();
 		}
-		String sql = "select the_img as image, name , date(the_img) as ts from images i join album_images a on a.iid=i.iid and aid=2 where size(the_img)>1600";
+		String sql = "select the_img as image, name , date(the_img) as ts from images i /*join album_images a on a.iid=i.iid and aid=2 where size(the_img)>1600*/";
 		PreparedStatement st = conn.prepareStatement(sql);
 		ResultSet rs = st.executeQuery();
 		while(rs.next()) {
@@ -75,8 +74,9 @@ public class PostPicTest {
 			if(o instanceof PGImage) {
 				PGImage i = (PGImage)o;
 				System.out.println("Image data: "+i.getWidth()+"x"+i.getHeight()
-						+" taken at: "+i.getDate());
-				Image img = i.getImage((PGConnection)conn);
+						+" taken at: "+i.getDate()+" f/"+i.getFNumber()+" Exposure time: "+i.getExposureTime()+"s");
+				i.setConn(conn);
+				Image img = i.getImage();
 				display(img, rs.getString("name"));
 			} else {
 				System.out.println("Registration failed.\nImage class: "+o.getClass().getCanonicalName());
