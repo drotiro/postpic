@@ -50,6 +50,7 @@ typedef struct {
 #define ATTR_TIME	"EXIF:DateTimeOriginal"
 #define ATTR_EXPT	"EXIF:ExposureTime"
 #define ATTR_FNUM	"EXIF:FNumber"
+#define ATTR_ISO	"EXIF:ISOSpeedRatings"
 #define	PP_VERSION_RELEASE	1
 #define	PP_VERSION_MAJOR	0
 #define	PP_VERSION_MINOR	0
@@ -86,6 +87,7 @@ Timestamp	pp_str2timestamp(const char * date);
 char*		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
 double		pp_parse_double(const char * str);
+int			pp_parse_int(char * str);
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
 void		gm_image_destroy(Image *);
@@ -114,9 +116,9 @@ Datum       image_out(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
 	char * out = palloc(8*INTLEN+DATELEN);
-	sprintf(out, "%d|%s|%d|%d|%f|%f", img->imgdata, 
+	sprintf(out, "%d|%s|%d|%d|%f|%f|%d", img->imgdata, 
 		pp_timestamp2str(img->date), img->width, img->height,
-		img->f_number, img->exposure_t);
+		img->f_number, img->exposure_t, img->iso);
 	PG_RETURN_CSTRING(out);	
 }
 
@@ -269,13 +271,19 @@ char*		pp_timestamp2str(Timestamp ts)
 	return res;
 }
 
-double pp_parse_double(const char * str)
+double		pp_parse_double(const char * str)
 {
     float s=-1,g=1;
     if(!str || !str[0]) return -1;
     if(index(str, '/')==NULL) return strtod(str,NULL);
     sscanf(str, "%f/%f", &s, &g);
     return s/g;
+}
+
+int		pp_parse_int(char * str)
+{
+	if(!str || !isdigit(str[0])) return -1;
+	return pg_atoi(str, 4, 0);
 }
 
 void	pp_init_image(PPImage * img, Image * gimg)
@@ -296,6 +304,8 @@ void	pp_init_image(PPImage * img, Image * gimg)
    	img->f_number = pp_parse_double(attr);
 	attr = gm_image_getattr(gimg, ATTR_EXPT);
    	img->exposure_t = pp_parse_double(attr);
+   	attr = gm_image_getattr(gimg, ATTR_ISO);
+   	img->iso = pp_parse_int(attr);
 }
 
 
