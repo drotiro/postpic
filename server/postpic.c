@@ -44,7 +44,7 @@ typedef struct {
 
 /* Some constant */
 #define BUFSIZE		8192
-#define OIDLEN		20
+#define INTLEN		20
 #define DATELEN		20
 #define VERLEN		128
 #define ATTR_TIME	"EXIF:DateTimeOriginal"
@@ -113,7 +113,7 @@ PG_FUNCTION_INFO_V1(image_out);
 Datum       image_out(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	char * out = palloc(3*OIDLEN+DATELEN);
+	char * out = palloc(8*INTLEN+DATELEN);
 	sprintf(out, "%d|%s|%d|%d|%f|%f", img->imgdata, 
 		pp_timestamp2str(img->date), img->width, img->height,
 		img->f_number, img->exposure_t);
@@ -233,8 +233,8 @@ Timestamp	pp_str2timestamp(const char * edate)
 	Timestamp res;
 	char * date;
 	
-	if(strlen(edate)<19) {
-	    elog(WARNING, "could not parse date %s", edate);
+	if(!edate || strlen(edate)<19) {
+    	//elog(WARNING, "could not parse date %s", edate);
 	    TIMESTAMP_NOBEGIN(res);
 	    return res;
 	}
@@ -271,7 +271,8 @@ char*		pp_timestamp2str(Timestamp ts)
 
 double pp_parse_double(const char * str)
 {
-    float s=0,g=1;
+    float s=-1,g=1;
+    if(!str || !str[0]) return -1;
     if(index(str, '/')==NULL) return strtod(str,NULL);
     sscanf(str, "%f/%f", &s, &g);
     return s/g;
@@ -290,19 +291,11 @@ void	pp_init_image(PPImage * img, Image * gimg)
 	
 	//Data read from attributes
 	attr = gm_image_getattr(gimg, ATTR_TIME);
-	if(attr) {
-		img->date = pp_str2timestamp(attr);
-    } else {
-    	TIMESTAMP_NOBEGIN(img->date);
-    }
+	img->date = pp_str2timestamp(attr);
     attr = gm_image_getattr(gimg, ATTR_FNUM);
-    if(attr) {
-    	img->f_number = pp_parse_double(attr);
-	}
+   	img->f_number = pp_parse_double(attr);
 	attr = gm_image_getattr(gimg, ATTR_EXPT);
-	if(attr) {
-    	img->exposure_t = pp_parse_double(attr);
-	}
+   	img->exposure_t = pp_parse_double(attr);
 }
 
 
