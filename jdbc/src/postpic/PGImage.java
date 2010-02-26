@@ -18,8 +18,11 @@
 package postpic;
 
 import java.awt.Image;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
@@ -52,6 +55,11 @@ public class PGImage extends PGobject {
 		return exposure_t;
 	}
 
+	/*
+	 * It's sad that an object returned from a ResultSet
+	 * can't inherit the connection...
+	 * Ask the user to provide it...
+	 */
 	public void setConn(Connection conn) {
 		this.conn = (PGConnection)conn;
 	}
@@ -94,8 +102,7 @@ public class PGImage extends PGobject {
 			}
 		}
 	}
-	
-	
+		
 	private Timestamp parseTimestamp(String ts) {
 		try {
 			return Timestamp.valueOf(ts);
@@ -104,16 +111,23 @@ public class PGImage extends PGobject {
 		}
 	}
 
-	/*
-	 * It's sad that an object returned from a ResultSet
-	 * can't inherit the connection...
-	 * Ask the user to provide it...
-	 */
 	public Image getImage() throws SQLException, IOException {
 		LargeObjectManager lm = conn.getLargeObjectAPI();
 		LargeObject lo = lm.open(loid);
 		Image i = ImageIO.read(lo.getInputStream());
 		lo.close();
 		return i;
+	}
+	
+	public Image getThumbnail(int size) throws SQLException, IOException {
+		Connection c = (Connection) conn;
+		c.prepareStatement("begin").execute();
+		PreparedStatement ps = c.prepareStatement(
+				"select image_thumbnail(image_create_from_loid("+loid+"), "+size+") as thumb");
+		ResultSet rs = ps.executeQuery();
+		rs.next();
+		byte[] imgb = (byte[]) rs.getObject("thumb");
+		c.prepareStatement("end").execute();
+		return ImageIO.read(new ByteArrayInputStream(imgb));
 	}
 }
