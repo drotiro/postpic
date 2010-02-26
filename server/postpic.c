@@ -69,28 +69,33 @@ typedef struct {
 /*
  * Mandatory and factory methods 
  */
-Datum		image_in(PG_FUNCTION_ARGS);
-Datum		image_out(PG_FUNCTION_ARGS);
-Datum		image_create_from_loid(PG_FUNCTION_ARGS);
+Datum	image_in(PG_FUNCTION_ARGS);
+Datum	image_out(PG_FUNCTION_ARGS);
+Datum	image_create_from_loid(PG_FUNCTION_ARGS);
 
 /*
  * A bit of info about ourselves
  */
-Datum		postpic_version(PG_FUNCTION_ARGS);
-Datum		postpic_version_release(PG_FUNCTION_ARGS);
-Datum		postpic_version_major(PG_FUNCTION_ARGS);
-Datum		postpic_version_minor(PG_FUNCTION_ARGS);
+Datum	postpic_version(PG_FUNCTION_ARGS);
+Datum	postpic_version_release(PG_FUNCTION_ARGS);
+Datum	postpic_version_major(PG_FUNCTION_ARGS);
+Datum	postpic_version_minor(PG_FUNCTION_ARGS);
 
 /*
  * Property getters and operations
  */
-Datum		image_width(PG_FUNCTION_ARGS);
-Datum		image_height(PG_FUNCTION_ARGS);
-Datum		image_oid(PG_FUNCTION_ARGS);
-Datum		image_date(PG_FUNCTION_ARGS);
-Datum		image_f_number(PG_FUNCTION_ARGS);
-Datum		image_exposure_time(PG_FUNCTION_ARGS);
-Datum		image_iso(PG_FUNCTION_ARGS);
+Datum	image_width(PG_FUNCTION_ARGS);
+Datum	image_height(PG_FUNCTION_ARGS);
+Datum	image_oid(PG_FUNCTION_ARGS);
+Datum	image_date(PG_FUNCTION_ARGS);
+Datum	image_f_number(PG_FUNCTION_ARGS);
+Datum	image_exposure_time(PG_FUNCTION_ARGS);
+Datum	image_iso(PG_FUNCTION_ARGS);
+
+/*
+ * Image processing functions
+ */
+Datum	image_thumbnail(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -146,6 +151,47 @@ Datum		image_create_from_loid(PG_FUNCTION_ARGS)
 	img->imgdata = loid;
 	gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
+}
+
+PG_FUNCTION_INFO_V1(image_thumbnail);
+Datum   image_thumbnail(PG_FUNCTION_ARGS)
+{
+	ExceptionInfo ex;
+	ImageInfo *iinfo;
+	void * blob;
+	int4 size, sx, sy;
+	size_t blen;
+	PPImage * img;
+	bytea * result;
+	Image * gimg, * timg;
+	
+	img = (PPImage *) PG_GETARG_POINTER(0);
+	size = PG_GETARG_INT32(1);
+	gimg = gm_image_from_lob(img->imgdata);
+	if(img->width >= img->height) {
+		sx = size;
+		sy = img->height * size / img->width;
+	} else {
+		sy = size;
+		sx = img->width * size / img->height;
+	}
+	iinfo = CloneImageInfo(NULL);
+	GetExceptionInfo(&ex);
+	strcpy(iinfo->magick, "JPEG");
+	timg = ThumbnailImage(gimg, sx, sy, &ex);
+	blob = ImageToBlob(iinfo, timg, &blen, &ex);
+	
+	// Build bytea from gm's blob
+	result = (bytea*) palloc(VARHDRSZ+blen);
+	SET_VARSIZE(result, VARHDRSZ+blen);
+	memcpy(VARDATA(result), blob, blen);
+	elog(NOTICE, "Created thumbnail of %d bytes", blen);
+
+	free(blob);
+	DestroyImage(gimg);
+	DestroyImageInfo(iinfo);
+	DestroyExceptionInfo(&ex);
+	PG_RETURN_BYTEA_P(result);	
 }
 
 PG_FUNCTION_INFO_V1(postpic_version);

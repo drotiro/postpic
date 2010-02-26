@@ -1,4 +1,6 @@
-
+/*
+ * Definition of our basic type: image
+ */
 DROP TYPE image CASCADE;
 CREATE TYPE image; -- shell type
 
@@ -17,6 +19,14 @@ CREATE TYPE image (
    output = image_out,
    internallength = 40
 );
+
+/*
+ * An helper type for sending data
+ * to the client without storing
+ * it in a large object
+ */
+DROP DOMAIN temporary_image CASCADE;
+CREATE DOMAIN temporary_image AS bytea;
 
 CREATE FUNCTION image_create_from_loid( oid )
    RETURNS image
@@ -57,6 +67,11 @@ CREATE FUNCTION iso ( image )
    RETURNS INT
    AS '$libdir/postpic', 'image_iso'
    LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION image_thumbnail ( image, INT )
+	RETURNS temporary_image
+	AS '$libdir/postpic'
+	LANGUAGE C IMMUTABLE STRICT;
 
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
