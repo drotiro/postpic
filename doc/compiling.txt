@@ -23,7 +23,10 @@ package manager, be sure to install the development packages too.
 Eg.
 	sudo apt-get install libgraphicsmagick-dev postgresql-server-dev-8.4
 
-Before compiling PostPic, the following programs should be in your path:
+Before compiling PostPic, the Makefile checks if the following programs
+are in your path:
  * GraphicsMagick-config
  * pg_config
+ * ant (for java code only)
+
 

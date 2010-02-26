@@ -5,9 +5,14 @@ PostPic is an extension for the open source PostgreSQL dbms that enables
 image processing inside the database, like PostGIS does for spatial data.
 It adds the new 'image' type to the SQL, and several functions to process
 mages and to extract their attributes.
+
 Eg.
 	select the_image as i from my_images where date(i) > '2009-01-01'::date
 		and width(i) > 1600;
+
+Traditional relational clauses can be combined in queries with image-related
+ones, and basic image processing can be performed in SQL.
+
 
 Contents of this package
 ------------------------
@@ -17,11 +22,22 @@ This package contains the following:
  * utils: utilities for client-side loading of images, etc.
  * jdbc: mapping for the new type, enhances the postgresql jdbc driver
  * doc: instruction for building the sources and other documentation
- * examples: samples to get stared
+ * examples: example programs and sql scripts
 
 
 License
 -------
 
-PostPic is written by Domenico Rotiroti, and released under the LGPLv3
-license (see lgpl-3.0.txt), and is provided as-is, without any warranty.
+PostPic is Copyright (C) 2010 Domenico Rotiroti.
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as
+ published by the Free Software Foundation, version 3 of the License.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
+
+ A copy of the GNU Lesser General Public License is included in the
+ source distribution of this software.
