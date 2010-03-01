@@ -120,26 +120,29 @@ public class PGImage extends PGobject {
 	}
 	
 	public Image getThumbnail(int size) throws SQLException, IOException {
-		Connection c = (Connection) conn;
-		c.prepareStatement("begin").execute();
-		PreparedStatement ps = c.prepareStatement(
-				"select image_thumbnail(image_create_from_loid("+loid+"), "+size+") as thumb");
-		ResultSet rs = ps.executeQuery();
-		rs.next();
-		byte[] imgb = (byte[]) rs.getObject("thumb");
-		c.prepareStatement("end").execute();
-		return ImageIO.read(new ByteArrayInputStream(imgb));
+		return getTempImage(
+				"select image_thumbnail(image_create_from_loid("+loid+"), "+size+")");
 	}
 	
 	public Image getSquare(int size) throws SQLException, IOException {
+		return getTempImage(
+				"select image_square(image_create_from_loid("+loid+"), "+size+")");
+	}
+
+	private Image getTempImage(String q) throws SQLException, IOException {
 		Connection c = (Connection) conn;
 		c.prepareStatement("begin").execute();
-		PreparedStatement ps = c.prepareStatement(
-				"select image_square(image_create_from_loid("+loid+"), "+size+") as thumb");
+		PreparedStatement ps = c.prepareStatement(q);
 		ResultSet rs = ps.executeQuery();
 		rs.next();
-		byte[] imgb = (byte[]) rs.getObject("thumb");
+		Image res = getTempImage(rs.getObject(1));
 		c.prepareStatement("end").execute();
+		return res;
+	}
+	
+	public static Image getTempImage(Object o) throws IOException, ClassCastException {
+		if(!(o instanceof byte[])) throw new ClassCastException("Object is not a temporary image");
+		byte[] imgb = (byte[]) o;
 		return ImageIO.read(new ByteArrayInputStream(imgb));
 	}
 }
