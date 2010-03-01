@@ -130,4 +130,16 @@ public class PGImage extends PGobject {
 		c.prepareStatement("end").execute();
 		return ImageIO.read(new ByteArrayInputStream(imgb));
 	}
+	
+	public Image getSquare(int size) throws SQLException, IOException {
+		Connection c = (Connection) conn;
+		c.prepareStatement("begin").execute();
+		PreparedStatement ps = c.prepareStatement(
+				"select image_square(image_create_from_loid("+loid+"), "+size+") as thumb");
+		ResultSet rs = ps.executeQuery();
+		rs.next();
+		byte[] imgb = (byte[]) rs.getObject("thumb");
+		c.prepareStatement("end").execute();
+		return ImageIO.read(new ByteArrayInputStream(imgb));
+	}
 }

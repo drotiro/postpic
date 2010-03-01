@@ -96,18 +96,20 @@ Datum	image_iso(PG_FUNCTION_ARGS);
  * Image processing functions
  */
 Datum	image_thumbnail(PG_FUNCTION_ARGS);
+Datum	image_square(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
  */
 void		pp_init_image(PPImage * img, Image * gimg);
 Timestamp	pp_str2timestamp(const char * date);
-char*		pp_timestamp2str(Timestamp ts);
+char *		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
+void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
 void *		lo_readblob(Oid loid, int * len);
 int			lo_size(LargeObjectDesc * lod);
@@ -157,7 +159,6 @@ PG_FUNCTION_INFO_V1(image_thumbnail);
 Datum   image_thumbnail(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	ImageInfo *iinfo;
 	void * blob;
 	int4 size, sx, sy;
 	size_t blen;
@@ -175,23 +176,76 @@ Datum   image_thumbnail(PG_FUNCTION_ARGS)
 		sy = size;
 		sx = img->width * size / img->height;
 	}
-	iinfo = CloneImageInfo(NULL);
 	GetExceptionInfo(&ex);
-	strcpy(iinfo->magick, "JPEG");
 	timg = ThumbnailImage(gimg, sx, sy, &ex);
-	blob = ImageToBlob(iinfo, timg, &blen, &ex);
+	blob = gm_image_to_blob(timg, &blen, &ex);
 	
-	// Build bytea from gm's blob
-	result = (bytea*) palloc(VARHDRSZ+blen);
-	SET_VARSIZE(result, VARHDRSZ+blen);
-	memcpy(VARDATA(result), blob, blen);
-	elog(NOTICE, "Created thumbnail of %d bytes", blen);
-
+    result = (bytea*) palloc(VARHDRSZ+blen);
+    SET_VARSIZE(result, VARHDRSZ+blen);
+    memcpy(VARDATA(result), blob, blen);
+            
 	free(blob);
-	DestroyImage(gimg);
-	DestroyImageInfo(iinfo);
+	gm_image_destroy(gimg);
+	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
 	PG_RETURN_BYTEA_P(result);	
+}
+
+PG_FUNCTION_INFO_V1(image_square);
+Datum   image_square(PG_FUNCTION_ARGS)
+{
+	ExceptionInfo ex;
+	RectangleInfo ri;
+	void * blob;
+	int4 size, sx, sy;
+	size_t blen;
+	PPImage * img;
+	bytea * result;
+	Image * gimg, * timg, * simg;
+	
+	img = (PPImage *) PG_GETARG_POINTER(0);
+	size = PG_GETARG_INT32(1);
+	gimg = gm_image_from_lob(img->imgdata);
+
+	ri.x = ri.y = 0;
+	ri.width = ri.height = size;
+	if(img->width < img->height) {
+		sx = size;
+		sy = img->height * size / img->width;
+		ri.y = (sy-sx)/2;
+	} else {
+		sy = size;
+		sx = img->width * size / img->height;
+		ri.x = (sx-sy)/2;
+	}
+	GetExceptionInfo(&ex);
+	timg = ThumbnailImage(gimg, sx, sy, &ex);
+	simg = CropImage(timg, &ri, &ex);
+	blob = gm_image_to_blob(simg, &blen, &ex);
+	
+    result = (bytea*) palloc(VARHDRSZ+blen);
+    SET_VARSIZE(result, VARHDRSZ+blen);
+    memcpy(VARDATA(result), blob, blen);
+            
+	free(blob);
+	gm_image_destroy(gimg);
+	gm_image_destroy(timg);
+	gm_image_destroy(simg);
+	DestroyExceptionInfo(&ex);
+	PG_RETURN_BYTEA_P(result);	
+}
+
+void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
+{
+	ImageInfo *iinfo;
+	void * blob;
+
+	iinfo = CloneImageInfo(NULL);
+	strcpy(iinfo->magick, "JPEG");
+	blob = ImageToBlob(iinfo, timg, blen, ex);
+	DestroyImageInfo(iinfo);
+	
+	return blob;
 }
 
 PG_FUNCTION_INFO_V1(postpic_version);

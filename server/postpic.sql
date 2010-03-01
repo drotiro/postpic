@@ -73,6 +73,11 @@ CREATE FUNCTION image_thumbnail ( image, INT )
 	AS '$libdir/postpic'
 	LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION image_square ( image, INT )
+    RETURNS temporary_image
+	AS '$libdir/postpic'
+	LANGUAGE C IMMUTABLE STRICT;        
+
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
    AS '$libdir/postpic'
