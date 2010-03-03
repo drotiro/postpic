@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project default="main">
-	<description>PostPic extensions to PostgreSQL JDBC driver</description>
+	<description>PostPicSQL: an example of PostPic usage from java</description>
 	
 	<property name="build" location="build" />
 	<property name="src" location="src" />
-	<property name="lib" location="lib" />
 	<property name="dist" location="dist" />
-	<property name="rel" value="1.0.0" />
+	<property name="jdbc" location="../../jdbc" />
+	<property name="manifest" value="manifest.txt" />
 	
     <target name="main" depends="compile, compress">
     </target>
@@ -16,21 +16,18 @@
         <javac srcdir="${src}" destdir="${build}">
         	<classpath>
       			<pathelement path="${classpath}"/>
-      				<fileset dir="${lib}">
-        				<include name="*.jar"/>
+      				<fileset dir="${jdbc}">
+        				<include name="lib/*.jar"/>
+        				<include name="dist/*.jar"/>
       				</fileset>
     		</classpath>
         </javac>
-        <copy todir="${build}">
-        	<fileset dir="${src}">
-        		<include name="**/*.properties" />
-        	</fileset>
-        </copy>
     </target>
   
   <target name="compress" description="Archiving target">
   	<mkdir dir="${dist}" />
-	<jar jarfile="${dist}/postpic-jdbc-${rel}.jar" basedir="${build}" />
+	<jar jarfile="${dist}/PostPicSQL.jar" basedir="${build}"
+		manifest="${src}/${manifest}"/>
   </target>
   
   <target name="clean">

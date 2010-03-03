@@ -7,7 +7,10 @@ postpic: check
 
 jdbc: jcheck
 	@ant -f jdbc/build.xml
-	
+
+examples: jcheck
+	@ant -f examples/PostPicSQL/build.xml
+
 clean:
 	@$(foreach i,$(SUBDIRS), make -C $i clean ;)
 
