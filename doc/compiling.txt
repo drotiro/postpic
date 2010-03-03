@@ -3,7 +3,7 @@ Compiling the sources
 
 Typing 'make' at the command prompt builds the server extension and the
 utils. You can build the jdbc add-on with 'make jdbc' or both with
-'make all'. Examples are build with 'make examples'.
+'make all'. Examples are built with 'make examples'.
 See the top-level Makefile for other targets.
 
 PostPic uses pgxs for extension building, so you can try to install the
