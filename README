@@ -7,8 +7,8 @@ It adds the new 'image' type to the SQL, and several functions to process
 mages and to extract their attributes.
 
 Eg.
-	select the_image as i from my_images where date(i) > '2009-01-01'::date
-		and width(i) > 1600;
+	select * from my_images where date(the_img) > '2009-01-01'::date
+		and width(the_img) > 1600;
 
 Traditional relational clauses can be combined in queries with image-related
 ones, and basic image processing can be performed in SQL.
@@ -25,8 +25,8 @@ This package contains the following:
  * examples: example programs and sql scripts
 
 
-License
--------
+Copyright and license
+---------------------
 
 PostPic is Copyright (C) 2010 Domenico Rotiroti.
 
