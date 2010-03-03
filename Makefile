@@ -8,7 +8,7 @@ postpic: check
 jdbc: jcheck
 	@ant -f jdbc/build.xml
 
-examples: jcheck
+examples: jdbc
 	@ant -f examples/PostPicSQL/build.xml
 
 clean:
