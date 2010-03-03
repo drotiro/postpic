@@ -68,14 +68,14 @@ CREATE FUNCTION iso ( image )
    AS '$libdir/postpic', 'image_iso'
    LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION image_thumbnail ( image, INT )
+CREATE FUNCTION thumbnail ( image, INT )
 	RETURNS temporary_image
-	AS '$libdir/postpic'
+	AS '$libdir/postpic', 'image_thumbnail'
 	LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION image_square ( image, INT )
+CREATE FUNCTION square ( image, INT )
     RETURNS temporary_image
-	AS '$libdir/postpic'
+	AS '$libdir/postpic', 'image_square'
 	LANGUAGE C IMMUTABLE STRICT;        
 
 CREATE FUNCTION postpic_version ( )
