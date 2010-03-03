@@ -61,8 +61,8 @@ typedef struct {
 #define ATTR_EXPT	"EXIF:ExposureTime"
 #define ATTR_FNUM	"EXIF:FNumber"
 #define ATTR_ISO	"EXIF:ISOSpeedRatings"
-#define	PP_VERSION_RELEASE	1
-#define	PP_VERSION_MAJOR	0
+#define	PP_VERSION_RELEASE	0
+#define	PP_VERSION_MAJOR	9
 #define	PP_VERSION_MINOR	0
 
 

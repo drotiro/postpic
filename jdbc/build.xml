@@ -6,7 +6,7 @@
 	<property name="src" location="src" />
 	<property name="lib" location="lib" />
 	<property name="dist" location="dist" />
-	<property name="rel" value="1.0.0" />
+	<property name="rel" value="0.9.0" />
 	
     <target name="main" depends="compile, compress">
     </target>
