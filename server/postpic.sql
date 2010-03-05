@@ -78,6 +78,15 @@ CREATE FUNCTION square ( image, INT )
 	AS '$libdir/postpic', 'image_square'
 	LANGUAGE C IMMUTABLE STRICT;        
 
+CREATE FUNCTION temp_to_image ( temporary_image )
+	RETURNS image
+	AS '$libdir/postpic'
+	LANGUAGE C STRICT;
+	
+CREATE CAST ( temporary_image AS image )
+	WITH FUNCTION temp_to_image ( temporary_image )
+	AS ASSIGNMENT;
+
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
    AS '$libdir/postpic'
@@ -97,7 +106,6 @@ CREATE FUNCTION postpic_version_minor ( )
    RETURNS INT
    AS '$libdir/postpic'
    LANGUAGE C IMMUTABLE STRICT;
-
 
 CREATE OR REPLACE FUNCTION null_image()
    RETURNS IMAGE AS

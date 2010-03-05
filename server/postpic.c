@@ -91,6 +91,7 @@ Datum	image_date(PG_FUNCTION_ARGS);
 Datum	image_f_number(PG_FUNCTION_ARGS);
 Datum	image_exposure_time(PG_FUNCTION_ARGS);
 Datum	image_iso(PG_FUNCTION_ARGS);
+Datum	temp_to_image(PG_FUNCTION_ARGS);
 
 /*
  * Image processing functions
@@ -113,6 +114,7 @@ void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
 void *		lo_readblob(Oid loid, int * len);
 int			lo_size(LargeObjectDesc * lod);
+Oid			lo_create(void * data, int datalen);
 
 
 PG_FUNCTION_INFO_V1(image_in);
@@ -233,6 +235,26 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	gm_image_destroy(simg);
 	DestroyExceptionInfo(&ex);
 	PG_RETURN_BYTEA_P(result);	
+}
+
+PG_FUNCTION_INFO_V1(temp_to_image);
+Datum   temp_to_image(PG_FUNCTION_ARGS)
+{
+	bytea *	temp;
+	PPImage * img  = (PPImage *) palloc(sizeof(PPImage));
+	Image * gimg;
+	Oid loid;
+	int datalen;
+	
+	temp = (bytea*) PG_GETARG_BYTEA_P(0);
+	datalen = VARSIZE(temp) - VARHDRSZ;
+	loid = lo_create(VARDATA(temp), datalen);
+	gimg = gm_image_from_lob(loid);
+	pp_init_image(img, gimg);
+	img->imgdata = loid;
+	gm_image_destroy(gimg);            
+	
+	PG_RETURN_POINTER(img);
 }
 
 void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
@@ -451,7 +473,6 @@ void	pp_init_image(PPImage * img, Image * gimg)
    	img->iso = pp_parse_int(attr);
 }
 
-
 int		lo_size(LargeObjectDesc * lod)
 {
 	inv_seek(lod, 0, SEEK_END);
@@ -478,6 +499,19 @@ void *	lo_readblob(Oid loid, int * blen)
 	inv_close(lod);
 	
 	return buf;
+}
+
+Oid	lo_create(void * data, int datalen)
+{
+	Oid loid;
+	LargeObjectDesc * lod;
+	
+	loid = inv_create(InvalidOid);
+	lod = inv_open(loid, INV_WRITE, CurrentMemoryContext);
+	inv_write(lod, data, datalen);
+	inv_close(lod);
+	//close_lo_relation(false);
+	return loid;
 }
 
 /*
