@@ -78,6 +78,11 @@ CREATE FUNCTION square ( image, INT )
 	AS '$libdir/postpic', 'image_square'
 	LANGUAGE C IMMUTABLE STRICT;        
 
+CREATE FUNCTION resize ( image, INT, INT )
+	RETURNS temporary_image
+    AS '$libdir/postpic', 'image_resize'
+    LANGUAGE C IMMUTABLE STRICT;
+
 CREATE FUNCTION temp_to_image ( temporary_image )
 	RETURNS image
 	AS '$libdir/postpic'

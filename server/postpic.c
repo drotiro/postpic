@@ -99,20 +99,24 @@ Datum	temp_to_image(PG_FUNCTION_ARGS);
  */
 Datum	image_thumbnail(PG_FUNCTION_ARGS);
 Datum	image_square(PG_FUNCTION_ARGS);
+Datum	image_resize(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
  */
 void		pp_init_image(PPImage * img, Image * gimg);
+// parsing and formatting
 Timestamp	pp_str2timestamp(const char * date);
 char *		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
+// image (GraphicsMagick) building and destroying
 Image *		gm_image_from_lob(Oid loid);
 char *		gm_image_getattr(Image * img, const char * attr);
 void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
+// large objects processing
 void *		lo_readblob(Oid loid, int * len);
 int			lo_size(int32 fd);
 void		lo_writeblob(Oid loid, void * data, int datalen);
@@ -181,6 +185,37 @@ Datum   image_thumbnail(PG_FUNCTION_ARGS)
 	}
 	GetExceptionInfo(&ex);
 	timg = ThumbnailImage(gimg, sx, sy, &ex);
+	blob = gm_image_to_blob(timg, &blen, &ex);
+	
+    result = (bytea*) palloc(VARHDRSZ+blen);
+    SET_VARSIZE(result, VARHDRSZ+blen);
+    memcpy(VARDATA(result), blob, blen);
+            
+	free(blob);
+	gm_image_destroy(gimg);
+	gm_image_destroy(timg);
+	DestroyExceptionInfo(&ex);
+	PG_RETURN_BYTEA_P(result);	
+}
+
+PG_FUNCTION_INFO_V1(image_resize);
+Datum   image_resize(PG_FUNCTION_ARGS)
+{
+	ExceptionInfo ex;
+	void * blob;
+	int4 sx, sy;
+	size_t blen;
+	PPImage * img;
+	bytea * result;
+	Image * gimg, * timg;
+	
+	img = (PPImage *) PG_GETARG_POINTER(0);
+	sx = PG_GETARG_INT32(1);
+	sy = PG_GETARG_INT32(2);
+
+	gimg = gm_image_from_lob(img->imgdata);
+	GetExceptionInfo(&ex);
+	timg = ResizeImage(gimg, sx, sy, CubicFilter, 1, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
     result = (bytea*) palloc(VARHDRSZ+blen);
