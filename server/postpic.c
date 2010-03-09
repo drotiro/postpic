@@ -25,6 +25,7 @@
 /* -> large objects */
 #include <storage/large_object.h>
 #include <libpq/libpq-fs.h>
+#include <libpq/be-fsstubs.h>
 #include <storage/fd.h>
 /* --- */
 #include <utils/elog.h>
@@ -113,8 +114,8 @@ char *		gm_image_getattr(Image * img, const char * attr);
 void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
 void *		lo_readblob(Oid loid, int * len);
-int			lo_size(LargeObjectDesc * lod);
-Oid			lo_create(void * data, int datalen);
+int			lo_size(int32 fd);
+void		lo_writeblob(Oid loid, void * data, int datalen);
 
 
 PG_FUNCTION_INFO_V1(image_in);
@@ -242,14 +243,28 @@ Datum   temp_to_image(PG_FUNCTION_ARGS)
 {
 	bytea *	temp;
 	PPImage * img  = (PPImage *) palloc(sizeof(PPImage));
+	ImageInfo * iinfo;
+	ExceptionInfo ex;
 	Image * gimg;
 	Oid loid;
+	Datum loid_d;
 	int datalen;
+	void * blob;
 	
 	temp = (bytea*) PG_GETARG_BYTEA_P(0);
 	datalen = VARSIZE(temp) - VARHDRSZ;
-	loid = lo_create(VARDATA(temp), datalen);
-	gimg = gm_image_from_lob(loid);
+	blob = VARDATA(temp);
+	
+	loid_d = DirectFunctionCall1(lo_create, ObjectIdGetDatum(InvalidOid));
+	loid = DatumGetObjectId(loid_d);
+	lo_writeblob(loid, blob, datalen);
+
+	//gimg = gm_image_from_lob(loid);
+	GetExceptionInfo(&ex);
+	iinfo = CloneImageInfo(NULL);
+	gimg = BlobToImage(iinfo, blob, datalen, &ex);
+	DestroyImageInfo(iinfo);
+	DestroyExceptionInfo(&ex);
 	pp_init_image(img, gimg);
 	img->imgdata = loid;
 	gm_image_destroy(gimg);            
@@ -369,7 +384,7 @@ Image *		gm_image_from_lob(Oid loid)
 	GetExceptionInfo(&ex);
 	iinfo = CloneImageInfo(NULL);
 	blob = lo_readblob(loid, &blen);
-	res = BlobToImage(iinfo, blob, blen,  &ex); 
+	res = BlobToImage(iinfo, blob, blen, &ex); 
 	DestroyImageInfo(iinfo);
 	DestroyExceptionInfo(&ex);
 
@@ -473,21 +488,28 @@ void	pp_init_image(PPImage * img, Image * gimg)
    	img->iso = pp_parse_int(attr);
 }
 
-int		lo_size(LargeObjectDesc * lod)
+int	lo_size(int32 fd)
 {
-	inv_seek(lod, 0, SEEK_END);
-	return inv_tell(lod);
+	Datum sz;
+	
+	DirectFunctionCall3(lo_lseek, Int32GetDatum(fd), Int32GetDatum(0),
+		Int32GetDatum(SEEK_END));
+	sz = DirectFunctionCall1(lo_tell, Int32GetDatum(fd));
+	DirectFunctionCall3(lo_lseek, Int32GetDatum(fd), Int32GetDatum(0), 
+		Int32GetDatum(SEEK_SET));
+	return DatumGetInt32(sz);	
 }
 
-void *	lo_readblob(Oid loid, int * blen)
+void *  lo_readblob(Oid loid, int * blen)
 {
 	void * buf;
 	int size;
-	int tmp;
-	
-	LargeObjectDesc * lod = inv_open(loid, INV_READ, CurrentMemoryContext);
-	size = lo_size(lod);
-	inv_seek(lod, 0, SEEK_SET);
+	Datum fd_d;
+	int32 fd;
+	fd_d = DirectFunctionCall2(lo_open, ObjectIdGetDatum(loid), 
+		Int32GetDatum(INV_READ));
+	fd = DatumGetInt32(fd_d);
+	size = lo_size(fd);
 	*blen = size;
 	buf = palloc(size);
     if(!buf) {
@@ -495,23 +517,21 @@ void *	lo_readblob(Oid loid, int * blen)
         	(errcode(ERRCODE_UNDEFINED_OBJECT),
 			 errmsg("error reading from large object: %d", loid)));
     }
-	tmp = inv_read(lod, buf, size);
-	inv_close(lod);
-	
-	return buf;
+	lo_read(fd, buf, size);
+	DirectFunctionCall1(lo_close, Int32GetDatum(fd));
+
+	return buf;	
 }
 
-Oid	lo_create(void * data, int datalen)
+void	lo_writeblob(Oid loid, void * data, int datalen)
 {
-	Oid loid;
-	LargeObjectDesc * lod;
-	
-	loid = inv_create(InvalidOid);
-	lod = inv_open(loid, INV_WRITE, CurrentMemoryContext);
-	inv_write(lod, data, datalen);
-	inv_close(lod);
-	//close_lo_relation(false);
-	return loid;
+    Datum fd_d;
+    int32 fd;
+    
+    fd_d = DirectFunctionCall2(lo_open, ObjectIdGetDatum(loid), Int32GetDatum(INV_WRITE));
+    fd = DatumGetInt32(fd_d);
+    lo_write(fd, data, datalen);
+    DirectFunctionCall1(lo_close, Int32GetDatum(fd));
 }
 
 /*
