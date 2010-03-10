@@ -21,8 +21,6 @@ import java.awt.Image;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
@@ -118,28 +116,7 @@ public class PGImage extends PGobject {
 		lo.close();
 		return i;
 	}
-	
-	public Image getThumbnail(int size) throws SQLException, IOException {
-		return getTempImage(
-				"select image_thumbnail(image_create_from_loid("+loid+"), "+size+")");
-	}
-	
-	public Image getSquare(int size) throws SQLException, IOException {
-		return getTempImage(
-				"select image_square(image_create_from_loid("+loid+"), "+size+")");
-	}
 
-	private Image getTempImage(String q) throws SQLException, IOException {
-		Connection c = (Connection) conn;
-		c.prepareStatement("begin").execute();
-		PreparedStatement ps = c.prepareStatement(q);
-		ResultSet rs = ps.executeQuery();
-		rs.next();
-		Image res = getTempImage(rs.getObject(1));
-		c.prepareStatement("end").execute();
-		return res;
-	}
-	
 	public static Image getTempImage(Object o) throws IOException, ClassCastException {
 		if(!(o instanceof byte[])) throw new ClassCastException("Object is not a temporary image");
 		byte[] imgb = (byte[]) o;
