@@ -101,6 +101,7 @@ Datum	image_thumbnail(PG_FUNCTION_ARGS);
 Datum	image_square(PG_FUNCTION_ARGS);
 Datum	image_resize(PG_FUNCTION_ARGS);
 Datum	image_crop(PG_FUNCTION_ARGS);
+Datum	image_rotate(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -254,6 +255,36 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 	gimg = gm_image_from_lob(img->imgdata);
 	GetExceptionInfo(&ex);
 	timg = CropImage(gimg, &rect, &ex);
+	blob = gm_image_to_blob(timg, &blen, &ex);
+	
+    result = (bytea*) palloc(VARHDRSZ+blen);
+    SET_VARSIZE(result, VARHDRSZ+blen);
+    memcpy(VARDATA(result), blob, blen);
+            
+	free(blob);
+	gm_image_destroy(gimg);
+	gm_image_destroy(timg);
+	DestroyExceptionInfo(&ex);
+	PG_RETURN_BYTEA_P(result);	
+}
+
+PG_FUNCTION_INFO_V1(image_rotate);
+Datum   image_rotate(PG_FUNCTION_ARGS)
+{
+	ExceptionInfo ex;
+	void * blob;
+	size_t blen;
+	float4 deg;
+	PPImage * img;
+	bytea * result;
+	Image * gimg, * timg;
+	
+	img = (PPImage *) PG_GETARG_POINTER(0);
+	deg = PG_GETARG_FLOAT4(1);
+
+	gimg = gm_image_from_lob(img->imgdata);
+	GetExceptionInfo(&ex);
+	timg = RotateImage(gimg, deg, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
     result = (bytea*) palloc(VARHDRSZ+blen);

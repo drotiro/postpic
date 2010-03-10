@@ -68,6 +68,15 @@ CREATE FUNCTION iso ( image )
    AS '$libdir/postpic', 'image_iso'
    LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION temp_to_image ( temporary_image )
+	RETURNS image
+	AS '$libdir/postpic'
+	LANGUAGE C STRICT;
+	
+CREATE CAST ( temporary_image AS image )
+	WITH FUNCTION temp_to_image ( temporary_image )
+	AS ASSIGNMENT;
+
 CREATE FUNCTION thumbnail ( image, INT )
 	RETURNS temporary_image
 	AS '$libdir/postpic', 'image_thumbnail'
@@ -98,14 +107,35 @@ CREATE FUNCTION crop_new ( image, INT, INT, INT, INT )
 		SELECT crop($1, $2, $3, $4, $5)::image
 	$$ LANGUAGE SQL STRICT;
 
-CREATE FUNCTION temp_to_image ( temporary_image )
-	RETURNS image
-	AS '$libdir/postpic'
-	LANGUAGE C STRICT;
+CREATE FUNCTION rotate ( image, FLOAT4 )
+	RETURNS temporary_image
+	AS '$libdir/postpic', 'image_rotate'
+	LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION rotate_new ( image, FLOAT4 )
+	RETURNS image AS $$
+		SELECT rotate($1, $2)::image
+	$$ LANGUAGE SQL STRICT;
 	
-CREATE CAST ( temporary_image AS image )
-	WITH FUNCTION temp_to_image ( temporary_image )
-	AS ASSIGNMENT;
+CREATE FUNCTION rotate_left ( image )
+	RETURNS temporary_image AS $$
+		SELECT rotate($1, -90)
+	$$ LANGUAGE SQL IMMUTABLE STRICT;
+	
+CREATE FUNCTION rotate_right ( image )
+	RETURNS temporary_image AS $$
+		SELECT rotate($1, 90)
+	$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION rotate_left_new ( image )
+	RETURNS image AS $$
+		SELECT rotate($1, -90)::image
+	$$ LANGUAGE SQL IMMUTABLE STRICT;
+	
+CREATE FUNCTION rotate_right_new ( image )
+	RETURNS image AS $$
+		SELECT rotate($1, 90)::image
+	$$ LANGUAGE SQL IMMUTABLE STRICT;
 
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
