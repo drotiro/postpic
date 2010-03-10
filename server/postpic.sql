@@ -83,6 +83,21 @@ CREATE FUNCTION resize ( image, INT, INT )
     AS '$libdir/postpic', 'image_resize'
     LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION resize_new ( image, INT, INT )
+	RETURNS image AS $$
+		SELECT resize($1, $2, $3)::image
+	$$ LANGUAGE SQL STRICT;
+
+CREATE FUNCTION crop ( image, INT, INT, INT, INT )
+	RETURNS temporary_image
+	AS '$libdir/postpic', 'image_crop'
+	LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION crop_new ( image, INT, INT, INT, INT )
+	RETURNS image AS $$
+		SELECT crop($1, $2, $3, $4, $5)::image
+	$$ LANGUAGE SQL STRICT;
+
 CREATE FUNCTION temp_to_image ( temporary_image )
 	RETURNS image
 	AS '$libdir/postpic'

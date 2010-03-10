@@ -100,6 +100,7 @@ Datum	temp_to_image(PG_FUNCTION_ARGS);
 Datum	image_thumbnail(PG_FUNCTION_ARGS);
 Datum	image_square(PG_FUNCTION_ARGS);
 Datum	image_resize(PG_FUNCTION_ARGS);
+Datum	image_crop(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -216,6 +217,43 @@ Datum   image_resize(PG_FUNCTION_ARGS)
 	gimg = gm_image_from_lob(img->imgdata);
 	GetExceptionInfo(&ex);
 	timg = ResizeImage(gimg, sx, sy, CubicFilter, 1, &ex);
+	blob = gm_image_to_blob(timg, &blen, &ex);
+	
+    result = (bytea*) palloc(VARHDRSZ+blen);
+    SET_VARSIZE(result, VARHDRSZ+blen);
+    memcpy(VARDATA(result), blob, blen);
+            
+	free(blob);
+	gm_image_destroy(gimg);
+	gm_image_destroy(timg);
+	DestroyExceptionInfo(&ex);
+	PG_RETURN_BYTEA_P(result);	
+}
+
+PG_FUNCTION_INFO_V1(image_crop);
+Datum   image_crop(PG_FUNCTION_ARGS)
+{
+	ExceptionInfo ex;
+	RectangleInfo rect;
+	void * blob;
+	int4 cx, cy, cw, ch;
+	size_t blen;
+	PPImage * img;
+	bytea * result;
+	Image * gimg, * timg;
+	
+	img = (PPImage *) PG_GETARG_POINTER(0);
+	cx = PG_GETARG_INT32(1);
+	cy = PG_GETARG_INT32(2);
+	cw = PG_GETARG_INT32(3);
+	ch = PG_GETARG_INT32(4);
+	rect.x = cx; rect.y = cy;
+	rect.width = cw;
+	rect.height = ch;
+
+	gimg = gm_image_from_lob(img->imgdata);
+	GetExceptionInfo(&ex);
+	timg = CropImage(gimg, &rect, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
     result = (bytea*) palloc(VARHDRSZ+blen);
