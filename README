@@ -14,6 +14,15 @@ Traditional relational clauses can be combined in queries with image-related
 ones, and basic image processing can be performed in SQL.
 
 
+Resources
+---------
+
+PostPic is hosted at GitHub <http://github.com/drotiro/postpic>.
+There you can find all the code releases and the project Wiki
+<http://wiki.github.com/drotiro/postpic/>, with detailed documentation
+about the project.
+
+
 Contents of this package
 ------------------------
 
@@ -21,7 +30,7 @@ This package contains the following:
  * server: sources for the server extension
  * utils: utilities for client-side loading of images, etc.
  * jdbc: mapping for the new type, enhances the postgresql jdbc driver
- * doc: instruction for building the sources and other documentation
+ * doc: instruction for building the sources
  * examples: example programs and sql scripts
 
 
