@@ -4,11 +4,11 @@
 PostPic is an extension for the open source PostgreSQL dbms that enables
 image processing inside the database, like PostGIS does for spatial data.
 It adds the new 'image' type to the SQL, and several functions to process
-mages and to extract their attributes.
+images and to extract their attributes.
 
 Eg.
-	select * from my_images where date(the_img) > '2009-01-01'::date
-		and width(the_img) > 1600;
+	select * from images where date(the_img) > '2009-01-01'::date
+		and size(the_img) > 1600;
 
 Traditional relational clauses can be combined in queries with image-related
 ones, and basic image processing can be performed in SQL.
