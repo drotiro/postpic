@@ -402,7 +402,7 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
 	aimgs = PG_GETARG_ARRAYTYPE_P(0);
 	rsize = PG_GETARG_INT32(1);
 	tsize = PG_GETARG_INT32(2);
-	tile = rsize/tsize;
+	tile = rsize/(tsize+4);
 	
 	gimg = NewImageList();
 	nimgs = ARR_DIMS(aimgs)[0];
@@ -416,12 +416,12 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
 	GetImageInfo(&iinfo);
 	GetMontageInfo(&iinfo, &minfo);
 	str = palloc(3*INTLEN);
-	sprintf(str, "%dx%d",tsize, tsize);
+	sprintf(str, "%dx%d+4+4",tsize, tsize);
 	minfo.geometry = str;
 	str = palloc(INTLEN);
 	sprintf(str, "%d", tile);
 	minfo.tile = str;
-	//minfo->title = strdup("PostPic index");
+	minfo.title = pstrdup("PostPic index");
 	minfo.shadow=1;
 	GetExceptionInfo(&ex);
 	rimg = MontageImages(gimg, &minfo, &ex);
