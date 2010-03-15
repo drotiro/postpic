@@ -30,10 +30,12 @@
 /* --- */
 #include <utils/elog.h>
 #include <utils/builtins.h>
+#include <utils/array.h>
 /* GM-related includes */
 #include <magick/api.h>
 /* Others */
 #include <stdio.h>
+#include <unistd.h>
 
 PG_MODULE_MAGIC;
 
@@ -102,6 +104,11 @@ Datum	image_square(PG_FUNCTION_ARGS);
 Datum	image_resize(PG_FUNCTION_ARGS);
 Datum	image_crop(PG_FUNCTION_ARGS);
 Datum	image_rotate(PG_FUNCTION_ARGS);
+
+/*
+ * Aggregate functions
+ */
+Datum   image_montage_reduce(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -376,6 +383,160 @@ Datum   temp_to_image(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(img);
 }
 
+PG_FUNCTION_INFO_V1(image_montage_reduce);
+Datum	image_montage_reduce(PG_FUNCTION_ARGS)
+{
+	ArrayType * aimgs;
+	Image * gimg, * rimg;
+	int4 rsize, tsize, tile;
+	int nimgs, i, istart;
+	ImageInfo iinfo;
+	MontageInfo minfo;
+	ExceptionInfo ex;
+	Oid * data;
+	char * str;
+	void * blob;
+	size_t blen;
+	bytea * result;
+	
+	aimgs = PG_GETARG_ARRAYTYPE_P(0);
+	rsize = PG_GETARG_INT32(1);
+	tsize = PG_GETARG_INT32(2);
+	tile = rsize/tsize;
+	
+	gimg = NewImageList();
+	nimgs = ARR_DIMS(aimgs)[0];
+	istart = ARR_LBOUND(aimgs)[0]-1;
+	data = (Oid*) ARR_DATA_PTR(aimgs);
+	for(i = istart; i < istart+nimgs; ++i) {
+		AppendImageToList(&gimg, gm_image_from_lob(data[i]));
+		//elog(NOTICE, "Oid is: %d", data[i]);
+	}
+	
+	GetImageInfo(&iinfo);
+	GetMontageInfo(&iinfo, &minfo);
+	str = palloc(3*INTLEN);
+	sprintf(str, "%dx%d",tsize, tsize);
+	minfo.geometry = str;
+	str = palloc(INTLEN);
+	sprintf(str, "%d", tile);
+	minfo.tile = str;
+	//minfo->title = strdup("PostPic index");
+	minfo.shadow=1;
+	GetExceptionInfo(&ex);
+	rimg = MontageImages(gimg, &minfo, &ex);
+	CatchException(&ex);
+	
+	//So sad, it doesn't work if I don't write the img :((
+	sprintf(rimg->filename, "/tmp/ppm%d_%d.jpg", rsize, tsize);
+	WriteImage(&iinfo, rimg);
+    blob = gm_image_to_blob(rimg, &blen, &ex); 
+    CatchException(&ex);
+    if(!blob) {
+    	result = NULL;
+    	elog(WARNING, "Can't get montage data");
+	}
+    else {
+	    result = (bytea*) palloc(VARHDRSZ+blen);
+	    SET_VARSIZE(result, VARHDRSZ+blen);
+	    memcpy(VARDATA(result), blob, blen);
+	    free(blob);
+	}
+	unlink(rimg->filename);
+
+	DestroyImageList(gimg);
+	DestroyExceptionInfo(&ex);
+	gm_image_destroy(rimg);
+	if(result) PG_RETURN_BYTEA_P(result);
+	PG_RETURN_NULL();
+}
+
+PG_FUNCTION_INFO_V1(postpic_version);
+Datum	postpic_version(PG_FUNCTION_ARGS)
+{
+	char * version = palloc(DATELEN);
+	sprintf(version, "PostPic version %d.%d.%d", PP_VERSION_RELEASE,
+		PP_VERSION_MAJOR, PP_VERSION_MINOR);
+	PG_RETURN_CSTRING( version ); 
+}
+
+PG_FUNCTION_INFO_V1(postpic_version_release);
+Datum	postpic_version_release(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_INT32( PP_VERSION_RELEASE );
+}
+
+PG_FUNCTION_INFO_V1(postpic_version_major);
+Datum	postpic_version_major(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_INT32( PP_VERSION_MAJOR );
+}
+
+PG_FUNCTION_INFO_V1(postpic_version_minor);
+Datum	postpic_version_minor(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_INT32( PP_VERSION_MINOR );
+}
+
+PG_FUNCTION_INFO_V1(image_width);
+Datum	image_width(PG_FUNCTION_ARGS)
+{
+	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PG_RETURN_INT32(img->width);
+}
+
+PG_FUNCTION_INFO_V1(image_height);
+Datum	image_height(PG_FUNCTION_ARGS)
+{
+	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PG_RETURN_INT32(img->height);
+}
+
+PG_FUNCTION_INFO_V1(image_oid);
+Datum	image_oid(PG_FUNCTION_ARGS)
+{
+	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PG_RETURN_OID(img->imgdata);
+}
+
+PG_FUNCTION_INFO_V1(image_date);
+Datum	image_date(PG_FUNCTION_ARGS)
+{
+	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	if(TIMESTAMP_IS_NOBEGIN(img->date)) PG_RETURN_NULL();
+	PG_RETURN_TIMESTAMP(img->date);
+}
+
+PG_FUNCTION_INFO_V1(image_f_number);
+Datum	image_f_number(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->f_number > 0) {
+    	PG_RETURN_FLOAT4(img->f_number);
+	}
+	PG_RETURN_NULL();
+}
+
+PG_FUNCTION_INFO_V1(image_exposure_time);
+Datum	image_exposure_time(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->exposure_t > 0) {
+        PG_RETURN_FLOAT4(img->exposure_t);
+    }
+    PG_RETURN_NULL();
+}
+
+PG_FUNCTION_INFO_V1(image_iso);
+Datum	image_iso(PG_FUNCTION_ARGS)
+{
+    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    if(img->iso > 0) {
+        PG_RETURN_INT32(img->iso);
+    }
+    PG_RETURN_NULL();
+}
+
 void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
 {
 	ImageInfo *iinfo;
@@ -387,92 +548,6 @@ void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
 	DestroyImageInfo(iinfo);
 	
 	return blob;
-}
-
-PG_FUNCTION_INFO_V1(postpic_version);
-Datum		postpic_version(PG_FUNCTION_ARGS)
-{
-	char * version = palloc(DATELEN);
-	sprintf(version, "PostPic version %d.%d.%d", PP_VERSION_RELEASE,
-		PP_VERSION_MAJOR, PP_VERSION_MINOR);
-	PG_RETURN_CSTRING( version ); 
-}
-
-PG_FUNCTION_INFO_V1(postpic_version_release);
-Datum		postpic_version_release(PG_FUNCTION_ARGS)
-{
-	PG_RETURN_INT32( PP_VERSION_RELEASE );
-}
-
-PG_FUNCTION_INFO_V1(postpic_version_major);
-Datum		postpic_version_major(PG_FUNCTION_ARGS)
-{
-	PG_RETURN_INT32( PP_VERSION_MAJOR );
-}
-
-PG_FUNCTION_INFO_V1(postpic_version_minor);
-Datum		postpic_version_minor(PG_FUNCTION_ARGS)
-{
-	PG_RETURN_INT32( PP_VERSION_MINOR );
-}
-
-PG_FUNCTION_INFO_V1(image_width);
-Datum		image_width(PG_FUNCTION_ARGS)
-{
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	PG_RETURN_INT32(img->width);
-}
-
-PG_FUNCTION_INFO_V1(image_height);
-Datum		image_height(PG_FUNCTION_ARGS)
-{
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	PG_RETURN_INT32(img->height);
-}
-
-PG_FUNCTION_INFO_V1(image_oid);
-Datum		image_oid(PG_FUNCTION_ARGS)
-{
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	PG_RETURN_OID(img->imgdata);
-}
-
-PG_FUNCTION_INFO_V1(image_date);
-Datum		image_date(PG_FUNCTION_ARGS)
-{
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	if(TIMESTAMP_IS_NOBEGIN(img->date)) PG_RETURN_NULL();
-	PG_RETURN_TIMESTAMP(img->date);
-}
-
-PG_FUNCTION_INFO_V1(image_f_number);
-Datum		image_f_number(PG_FUNCTION_ARGS)
-{
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-    if(img->f_number > 0) {
-    	PG_RETURN_FLOAT4(img->f_number);
-	}
-	PG_RETURN_NULL();
-}
-
-PG_FUNCTION_INFO_V1(image_exposure_time);
-Datum		image_exposure_time(PG_FUNCTION_ARGS)
-{
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-    if(img->exposure_t > 0) {
-        PG_RETURN_FLOAT4(img->exposure_t);
-    }
-    PG_RETURN_NULL();
-}
-
-PG_FUNCTION_INFO_V1(image_iso);
-Datum		image_iso(PG_FUNCTION_ARGS)
-{
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-    if(img->iso > 0) {
-        PG_RETURN_INT32(img->iso);
-    }
-    PG_RETURN_NULL();
 }
 
 Image *		gm_image_from_lob(Oid loid)

@@ -137,6 +137,11 @@ CREATE FUNCTION rotate_right_new ( image )
 		SELECT rotate($1, 90)::image
 	$$ LANGUAGE SQL IMMUTABLE STRICT;
 
+CREATE FUNCTION montage_reduce ( oid[], INT, INT )
+	RETURNS temporary_image
+	AS '$libdir/postpic', 'image_montage_reduce'
+	LANGUAGE C STRICT;
+
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
    AS '$libdir/postpic'
