@@ -77,6 +77,16 @@ CREATE CAST ( temporary_image AS image )
 	WITH FUNCTION temp_to_image ( temporary_image )
 	AS ASSIGNMENT;
 
+-- Temporary fix for bytea/temporary_image substitution
+CREATE FUNCTION temp_to_image (bytea)
+	RETURNS image 
+	AS '$libdir/postpic'
+	LANGUAGE C STRICT;
+
+CREATE CAST ( bytea AS image )
+	WITH FUNCTION temp_to_image ( bytea )
+	AS ASSIGNMENT;
+
 CREATE FUNCTION thumbnail ( image, INT )
 	RETURNS temporary_image
 	AS '$libdir/postpic', 'image_thumbnail'
