@@ -142,6 +142,18 @@ CREATE FUNCTION montage_reduce ( oid[], INT, INT )
 	AS '$libdir/postpic', 'image_montage_reduce'
 	LANGUAGE C STRICT;
 
+CREATE FUNCTION array_append_imgoid( oid[], image ) 
+	RETURNS oid[] AS $$
+		SELECT array_append ($1, oid($2)::oid)
+	$$ LANGUAGE SQL STRICT;
+
+CREATE AGGREGATE index ( image )
+(
+	sfunc = array_append_imgoid,
+	stype = oid[],
+	initcond = '{}'
+);
+
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
    AS '$libdir/postpic'
