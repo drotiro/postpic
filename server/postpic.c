@@ -68,6 +68,13 @@ typedef struct {
 #define	PP_VERSION_MAJOR	9
 #define	PP_VERSION_MINOR	0
 
+/*
+ * Image -> bytea macro
+ */
+#define PP_IMG_GETBYTES         result = (bytea*) palloc(VARHDRSZ+blen); \
+	SET_VARSIZE(result, VARHDRSZ+blen); \
+	memcpy(VARDATA(result), blob, blen); \
+	free(blob);
 
 /*
  * Mandatory and factory methods 
@@ -196,11 +203,8 @@ Datum   image_thumbnail(PG_FUNCTION_ARGS)
 	timg = ThumbnailImage(gimg, sx, sy, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
-    result = (bytea*) palloc(VARHDRSZ+blen);
-    SET_VARSIZE(result, VARHDRSZ+blen);
-    memcpy(VARDATA(result), blob, blen);
-            
-	free(blob);
+	PP_IMG_GETBYTES
+		
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
@@ -226,12 +230,9 @@ Datum   image_resize(PG_FUNCTION_ARGS)
 	GetExceptionInfo(&ex);
 	timg = ResizeImage(gimg, sx, sy, CubicFilter, 1, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
-	
-    result = (bytea*) palloc(VARHDRSZ+blen);
-    SET_VARSIZE(result, VARHDRSZ+blen);
-    memcpy(VARDATA(result), blob, blen);
-            
-	free(blob);
+
+	PP_IMG_GETBYTES	
+
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
@@ -264,11 +265,8 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 	timg = CropImage(gimg, &rect, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
-    result = (bytea*) palloc(VARHDRSZ+blen);
-    SET_VARSIZE(result, VARHDRSZ+blen);
-    memcpy(VARDATA(result), blob, blen);
-            
-	free(blob);
+	PP_IMG_GETBYTES            
+
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
@@ -294,11 +292,8 @@ Datum   image_rotate(PG_FUNCTION_ARGS)
 	timg = RotateImage(gimg, deg, &ex);
 	blob = gm_image_to_blob(timg, &blen, &ex);
 	
-    result = (bytea*) palloc(VARHDRSZ+blen);
-    SET_VARSIZE(result, VARHDRSZ+blen);
-    memcpy(VARDATA(result), blob, blen);
-            
-	free(blob);
+	PP_IMG_GETBYTES
+	
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
@@ -337,11 +332,8 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	simg = CropImage(timg, &ri, &ex);
 	blob = gm_image_to_blob(simg, &blen, &ex);
 	
-    result = (bytea*) palloc(VARHDRSZ+blen);
-    SET_VARSIZE(result, VARHDRSZ+blen);
-    memcpy(VARDATA(result), blob, blen);
-            
-	free(blob);
+	PP_IMG_GETBYTES
+	            
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	gm_image_destroy(simg);
@@ -437,10 +429,7 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
     	elog(WARNING, "Can't get montage data");
 	}
     else {
-	    result = (bytea*) palloc(VARHDRSZ+blen);
-	    SET_VARSIZE(result, VARHDRSZ+blen);
-	    memcpy(VARDATA(result), blob, blen);
-	    free(blob);
+    	PP_IMG_GETBYTES
 	}
 	unlink(rimg->filename);
 
