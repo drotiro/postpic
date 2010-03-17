@@ -595,7 +595,7 @@ PPImage *	pp_init_image(Image * gimg)
 	// Init imgdata with blob
 	SET_VARSIZE(&img->imgdata, blen + VARHDRSZ);
 	memcpy(VARDATA(&img->imgdata), blob, blen);
-	SET_VARSIZE(img, FIXED_DATA_LEN + blen + VARHDRSZ );
+	SET_VARSIZE(img, FIXED_DATA_LEN + blen + 2*VARHDRSZ );
 	free(blob);
 
 	//Data we have in Image
