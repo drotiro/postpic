@@ -29,7 +29,7 @@ import postpic.PostPic;
 
 public class PostPicTest {
 	
-	String host = "192.168.44.128", 
+	String host = "localhost", 
 		user = "postpic", 
 		password = "postpic", 
 		port = "5432",
