@@ -83,7 +83,6 @@ public class CommandParser {
 		ResultSetMetaData rm;
 		int col;
 		String fname;
-		ImageType ftype;
 		Image im;
 		Vector<Image> imgs = new Vector<Image>();
 		
@@ -97,10 +96,9 @@ public class CommandParser {
 				rm = rs.getMetaData();
 				col = findImageColumn(rm);
 				fname = rm.getColumnName(col);
-				ftype = ("image".equals(rm.getColumnTypeName(col)) ? ImageType.IMAGE : ImageType.TEMPORARY_IMAGE );
 				c.printf("Displaying column %s\n", fname);
 				while(rs.next()) {
-					im = getImage(rs, col, ftype);
+					im = getImage(rs, col);
 					if(mode==QueryMode.SINGLE) {
 						display(new Image[] {im});
 						break;
@@ -119,16 +117,9 @@ public class CommandParser {
 	}
 
 
-	private Image getImage(ResultSet rs, int col, ImageType it) throws SQLException, IOException {
-		PGImage pi;
-		switch (it) {
-			case IMAGE:
-				pi = (PGImage) rs.getObject(col);
-				pi.setConn(conn);
-				return pi.getImage();
-			default:
-				return PGImage.getTempImage(rs.getObject(col));
-		}
+	private Image getImage(ResultSet rs, int col) throws SQLException, IOException {
+		PGImage pi = (PGImage) rs.getObject(col);
+		return pi.getImage();
 	}
 
 	private void display(Image[] images) {

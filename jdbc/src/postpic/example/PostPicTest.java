@@ -30,10 +30,10 @@ import postpic.PostPic;
 public class PostPicTest {
 	
 	String host = "192.168.44.128", 
-		user = "postgres", 
-		password = "postgres", 
+		user = "postpic", 
+		password = "postpic", 
 		port = "5432",
-		database = "postgres";
+		database = "postpic";
 	
 	public String getHost() {
 		return host;
@@ -90,9 +90,6 @@ public class PostPicTest {
 			Object o = rs.getObject("image");
 			if(o instanceof PGImage) {
 				PGImage i = (PGImage)o;
-				System.out.println("Image data: "+i.getWidth()+"x"+i.getHeight()
-						+" taken at: "+i.getDate()+" f/"+i.getFNumber()+" Exposure time: "+i.getExposureTime()+"s ISO: "+i.getIso());
-				i.setConn(conn);
 				Image img = i.getImage();
 				display(img, rs.getString("name"));
 			} else {
