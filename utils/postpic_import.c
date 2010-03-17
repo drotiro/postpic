@@ -79,7 +79,7 @@ void pp_import(PGconn * conn, const char * file)
 	}
 	
 	if(opts.callback) {
-		sprintf(q, "select %s('%ld', '%s', '%s')", opts.callback, (long)loid,
+		sprintf(q, "select %s(image_from_large_object('%ld'), '%s', '%s')", opts.callback, (long)loid,
 			file, opts.usrdata);
 		res = PQexec(conn, q);
 		PQclear(res);

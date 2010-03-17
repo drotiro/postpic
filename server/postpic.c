@@ -44,15 +44,18 @@ PG_MODULE_MAGIC;
  * image information
  */
 typedef struct {
- Oid		imgdata;
- Timestamp	date;
- int4	width;
- int4	height;
- int4	cspace;
- int4	iso;
- float4	f_number;
- float4 exposure_t;
- float4 focal_l;
+	char	vl_len_[4];
+	/* FIXED_DATA_BEGIN */
+	Timestamp	date;
+	int4	width;
+	int4	height;
+	int4	cspace;
+	int4	iso;
+	float4	f_number;
+	float4 exposure_t;
+	float4 focal_l;
+	/* FIXED_DATA_END */
+	bytea imgdata;
 } PPImage;
 
 /* Some constant */
@@ -60,6 +63,7 @@ typedef struct {
 #define INTLEN		20
 #define DATELEN		20
 #define VERLEN		128
+#define FIXED_DATA_LEN	36
 #define ATTR_TIME	"EXIF:DateTimeOriginal"
 #define ATTR_EXPT	"EXIF:ExposureTime"
 #define ATTR_FNUM	"EXIF:FNumber"
@@ -68,20 +72,13 @@ typedef struct {
 #define	PP_VERSION_MAJOR	9
 #define	PP_VERSION_MINOR	0
 
-/*
- * Image -> bytea macro
- */
-#define PP_IMG_GETBYTES         result = (bytea*) palloc(VARHDRSZ+blen); \
-	SET_VARSIZE(result, VARHDRSZ+blen); \
-	memcpy(VARDATA(result), blob, blen); \
-	free(blob);
 
 /*
  * Mandatory and factory methods 
  */
 Datum	image_in(PG_FUNCTION_ARGS);
 Datum	image_out(PG_FUNCTION_ARGS);
-Datum	image_create_from_loid(PG_FUNCTION_ARGS);
+Datum	image_from_large_object(PG_FUNCTION_ARGS);
 
 /*
  * A bit of info about ourselves
@@ -96,12 +93,10 @@ Datum	postpic_version_minor(PG_FUNCTION_ARGS);
  */
 Datum	image_width(PG_FUNCTION_ARGS);
 Datum	image_height(PG_FUNCTION_ARGS);
-Datum	image_oid(PG_FUNCTION_ARGS);
 Datum	image_date(PG_FUNCTION_ARGS);
 Datum	image_f_number(PG_FUNCTION_ARGS);
 Datum	image_exposure_time(PG_FUNCTION_ARGS);
 Datum	image_iso(PG_FUNCTION_ARGS);
-Datum	temp_to_image(PG_FUNCTION_ARGS);
 
 /*
  * Image processing functions
@@ -120,7 +115,7 @@ Datum   image_montage_reduce(PG_FUNCTION_ARGS);
 /*
  * Internal and GraphicsMagick's
  */
-void		pp_init_image(PPImage * img, Image * gimg);
+PPImage *	pp_init_image(Image * gimg);
 // parsing and formatting
 Timestamp	pp_str2timestamp(const char * date);
 char *		pp_timestamp2str(Timestamp ts);
@@ -129,27 +124,28 @@ float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
 // image (GraphicsMagick) building and destroying
 Image *		gm_image_from_lob(Oid loid);
+Image *		gm_image_from_bytea(bytea * imgdata);
 char *		gm_image_getattr(Image * img, const char * attr);
 void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
 // large objects processing
 void *		lo_readblob(Oid loid, int * len);
 int			lo_size(int32 fd);
-void		lo_writeblob(Oid loid, void * data, int datalen);
 
 
 PG_FUNCTION_INFO_V1(image_in);
 Datum       image_in(PG_FUNCTION_ARGS)
 {
-	char * oidstr = PG_GETARG_CSTRING(0);
-	Oid loid;
-	PPImage * img = (PPImage *) palloc(sizeof(PPImage));
+	PPImage * img;
 	Image * gimg;
+	bytea * imgdata;
+	Datum data;
 	
-	sscanf(oidstr, "%d", &loid);
-	gimg = gm_image_from_lob(loid);
-	pp_init_image(img, gimg);
-	img->imgdata = loid;
+	data = DirectFunctionCall1(byteain, PG_GETARG_DATUM(0));
+	imgdata = (bytea *) DatumGetPointer(data);
+	gimg = gm_image_from_bytea(imgdata);
+	
+	img = pp_init_image(gimg);
 	gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }
@@ -158,22 +154,17 @@ PG_FUNCTION_INFO_V1(image_out);
 Datum       image_out(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	char * out = palloc(8*INTLEN+DATELEN);
-	sprintf(out, "%d|%s|%d|%d|%f|%f|%d", img->imgdata, 
-		pp_timestamp2str(img->date), img->width, img->height,
-		img->f_number, img->exposure_t, img->iso);
-	PG_RETURN_CSTRING(out);	
+	return DirectFunctionCall1(byteaout, PointerGetDatum(&img->imgdata));
 }
 
-PG_FUNCTION_INFO_V1(image_create_from_loid);
-Datum		image_create_from_loid(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(image_from_large_object);
+Datum		image_from_large_object(PG_FUNCTION_ARGS)
 {
 	Oid loid = PG_GETARG_OID(0);
-	PPImage * img = palloc(sizeof(PPImage));
 	Image * gimg = gm_image_from_lob(loid);
+	PPImage * img;
 	
-	pp_init_image(img, gimg);
-	img->imgdata = loid;
+	img = pp_init_image(gimg);
 	gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }
@@ -182,16 +173,13 @@ PG_FUNCTION_INFO_V1(image_thumbnail);
 Datum   image_thumbnail(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	void * blob;
 	int4 size, sx, sy;
-	size_t blen;
-	PPImage * img;
-	bytea * result;
+	PPImage * img, *res;
 	Image * gimg, * timg;
 	
 	img = (PPImage *) PG_GETARG_POINTER(0);
 	size = PG_GETARG_INT32(1);
-	gimg = gm_image_from_lob(img->imgdata);
+	gimg = gm_image_from_bytea(&img->imgdata);
 	if(img->width >= img->height) {
 		sx = size;
 		sy = img->height * size / img->width;
@@ -201,42 +189,35 @@ Datum   image_thumbnail(PG_FUNCTION_ARGS)
 	}
 	GetExceptionInfo(&ex);
 	timg = ThumbnailImage(gimg, sx, sy, &ex);
-	blob = gm_image_to_blob(timg, &blen, &ex);
-	
-	PP_IMG_GETBYTES
-		
+	res = pp_init_image(timg);
+			
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
-	PG_RETURN_BYTEA_P(result);	
+	PG_RETURN_POINTER(res);	
 }
 
 PG_FUNCTION_INFO_V1(image_resize);
 Datum   image_resize(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	void * blob;
 	int4 sx, sy;
-	size_t blen;
-	PPImage * img;
-	bytea * result;
+	PPImage * img, * res;
 	Image * gimg, * timg;
 	
 	img = (PPImage *) PG_GETARG_POINTER(0);
 	sx = PG_GETARG_INT32(1);
 	sy = PG_GETARG_INT32(2);
 
-	gimg = gm_image_from_lob(img->imgdata);
+	gimg = gm_image_from_bytea(&img->imgdata);
 	GetExceptionInfo(&ex);
 	timg = ResizeImage(gimg, sx, sy, CubicFilter, 1, &ex);
-	blob = gm_image_to_blob(timg, &blen, &ex);
-
-	PP_IMG_GETBYTES	
+	res = pp_init_image(timg);
 
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
-	PG_RETURN_BYTEA_P(result);	
+	PG_RETURN_POINTER(res);	
 }
 
 PG_FUNCTION_INFO_V1(image_crop);
@@ -244,11 +225,8 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
 	RectangleInfo rect;
-	void * blob;
 	int4 cx, cy, cw, ch;
-	size_t blen;
-	PPImage * img;
-	bytea * result;
+	PPImage * img, *res;
 	Image * gimg, * timg;
 	
 	img = (PPImage *) PG_GETARG_POINTER(0);
@@ -260,44 +238,37 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 	rect.width = cw;
 	rect.height = ch;
 
-	gimg = gm_image_from_lob(img->imgdata);
+	gimg = gm_image_from_bytea(&img->imgdata);
 	GetExceptionInfo(&ex);
 	timg = CropImage(gimg, &rect, &ex);
-	blob = gm_image_to_blob(timg, &blen, &ex);
-	
-	PP_IMG_GETBYTES            
+	res = pp_init_image(timg);
 
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
-	PG_RETURN_BYTEA_P(result);	
+	PG_RETURN_POINTER(res);	
 }
 
 PG_FUNCTION_INFO_V1(image_rotate);
 Datum   image_rotate(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	void * blob;
-	size_t blen;
 	float4 deg;
-	PPImage * img;
-	bytea * result;
+	PPImage * img, *res;
 	Image * gimg, * timg;
 	
 	img = (PPImage *) PG_GETARG_POINTER(0);
 	deg = PG_GETARG_FLOAT4(1);
 
-	gimg = gm_image_from_lob(img->imgdata);
+	gimg = gm_image_from_bytea(&img->imgdata);
 	GetExceptionInfo(&ex);
 	timg = RotateImage(gimg, deg, &ex);
-	blob = gm_image_to_blob(timg, &blen, &ex);
-	
-	PP_IMG_GETBYTES
-	
+	res = pp_init_image(timg);
+
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	DestroyExceptionInfo(&ex);
-	PG_RETURN_BYTEA_P(result);	
+	PG_RETURN_POINTER(res);
 }
 
 PG_FUNCTION_INFO_V1(image_square);
@@ -305,16 +276,13 @@ Datum   image_square(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
 	RectangleInfo ri;
-	void * blob;
 	int4 size, sx, sy;
-	size_t blen;
-	PPImage * img;
-	bytea * result;
+	PPImage * img, * res;
 	Image * gimg, * timg, * simg;
 	
 	img = (PPImage *) PG_GETARG_POINTER(0);
 	size = PG_GETARG_INT32(1);
-	gimg = gm_image_from_lob(img->imgdata);
+	gimg = gm_image_from_bytea(&img->imgdata);
 
 	ri.x = ri.y = 0;
 	ri.width = ri.height = size;
@@ -330,49 +298,13 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	GetExceptionInfo(&ex);
 	timg = ThumbnailImage(gimg, sx, sy, &ex);
 	simg = CropImage(timg, &ri, &ex);
-	blob = gm_image_to_blob(simg, &blen, &ex);
+	res = pp_init_image(simg);
 	
-	PP_IMG_GETBYTES
-	            
 	gm_image_destroy(gimg);
 	gm_image_destroy(timg);
 	gm_image_destroy(simg);
 	DestroyExceptionInfo(&ex);
-	PG_RETURN_BYTEA_P(result);	
-}
-
-PG_FUNCTION_INFO_V1(temp_to_image);
-Datum   temp_to_image(PG_FUNCTION_ARGS)
-{
-	bytea *	temp;
-	PPImage * img  = (PPImage *) palloc(sizeof(PPImage));
-	ImageInfo * iinfo;
-	ExceptionInfo ex;
-	Image * gimg;
-	Oid loid;
-	Datum loid_d;
-	int datalen;
-	void * blob;
-	
-	temp = (bytea*) PG_GETARG_BYTEA_P(0);
-	datalen = VARSIZE(temp) - VARHDRSZ;
-	blob = VARDATA(temp);
-	
-	loid_d = DirectFunctionCall1(lo_create, ObjectIdGetDatum(InvalidOid));
-	loid = DatumGetObjectId(loid_d);
-	lo_writeblob(loid, blob, datalen);
-
-	//gimg = gm_image_from_lob(loid);
-	GetExceptionInfo(&ex);
-	iinfo = CloneImageInfo(NULL);
-	gimg = BlobToImage(iinfo, blob, datalen, &ex);
-	DestroyImageInfo(iinfo);
-	DestroyExceptionInfo(&ex);
-	pp_init_image(img, gimg);
-	img->imgdata = loid;
-	gm_image_destroy(gimg);            
-	
-	PG_RETURN_POINTER(img);
+	PG_RETURN_POINTER(res);		
 }
 
 PG_FUNCTION_INFO_V1(image_montage_reduce);
@@ -385,11 +317,8 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
 	ImageInfo iinfo;
 	MontageInfo minfo;
 	ExceptionInfo ex;
-	Oid * data;
+	PPImage * data, *res;
 	char * str;
-	void * blob;
-	size_t blen;
-	bytea * result;
 	
 	aimgs = PG_GETARG_ARRAYTYPE_P(0);
 	rsize = PG_GETARG_INT32(1);
@@ -399,9 +328,9 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
 	gimg = NewImageList();
 	nimgs = ARR_DIMS(aimgs)[0];
 	istart = ARR_LBOUND(aimgs)[0]-1;
-	data = (Oid*) ARR_DATA_PTR(aimgs);
+	data = (PPImage *) ARR_DATA_PTR(aimgs);
 	for(i = istart; i < istart+nimgs; ++i) {
-		AppendImageToList(&gimg, gm_image_from_lob(data[i]));
+		AppendImageToList(&gimg, gm_image_from_bytea(&data[i].imgdata));
 		//elog(NOTICE, "Oid is: %d", data[i]);
 	}
 	
@@ -422,21 +351,20 @@ Datum	image_montage_reduce(PG_FUNCTION_ARGS)
 	//So sad, it doesn't work if I don't write the img :((
 	sprintf(rimg->filename, "/tmp/ppm%d_%d.jpg", rsize, tsize);
 	WriteImage(&iinfo, rimg);
-    blob = gm_image_to_blob(rimg, &blen, &ex); 
     CatchException(&ex);
-    if(!blob) {
-    	result = NULL;
+    if(!rimg) {
+		res = NULL;
     	elog(WARNING, "Can't get montage data");
 	}
     else {
-    	PP_IMG_GETBYTES
+    	res = pp_init_image(rimg);
 	}
 	unlink(rimg->filename);
 
 	DestroyImageList(gimg);
 	DestroyExceptionInfo(&ex);
 	gm_image_destroy(rimg);
-	if(result) PG_RETURN_BYTEA_P(result);
+	if(res) PG_RETURN_POINTER(res);
 	PG_RETURN_NULL();
 }
 
@@ -479,13 +407,6 @@ Datum	image_height(PG_FUNCTION_ARGS)
 {
 	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
 	PG_RETURN_INT32(img->height);
-}
-
-PG_FUNCTION_INFO_V1(image_oid);
-Datum	image_oid(PG_FUNCTION_ARGS)
-{
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
-	PG_RETURN_OID(img->imgdata);
 }
 
 PG_FUNCTION_INFO_V1(image_date);
@@ -553,6 +474,27 @@ Image *		gm_image_from_lob(Oid loid)
 	iinfo = CloneImageInfo(NULL);
 	blob = lo_readblob(loid, &blen);
 	res = BlobToImage(iinfo, blob, blen, &ex); 
+	DestroyImageInfo(iinfo);
+	DestroyExceptionInfo(&ex);
+
+	return res;
+}
+
+Image *		gm_image_from_bytea(bytea * imgdata)
+{
+	ExceptionInfo ex;
+	ImageInfo * iinfo;
+	Image * res;
+
+	if(!imgdata) return NULL;
+	GetExceptionInfo(&ex);
+	iinfo = CloneImageInfo(NULL);
+	res = BlobToImage(iinfo, VARDATA(imgdata), VARSIZE(imgdata) - VARHDRSZ, &ex);
+	if(!res) {
+        ereport(ERROR,
+        	(errcode(ERRCODE_UNDEFINED_OBJECT),
+			 errmsg("error reading image data: %s", ex.reason)));
+	}
 	DestroyImageInfo(iinfo);
 	DestroyExceptionInfo(&ex);
 
@@ -634,12 +576,27 @@ int		pp_parse_int(char * str)
 	return pg_atoi(str, 4, 0);
 }
 
-void	pp_init_image(PPImage * img, Image * gimg)
+PPImage *	pp_init_image(Image * gimg)
 {
 	char * attr;
+	void * blob;
+	size_t blen;
+	ExceptionInfo ex;
+	PPImage * img;
 
-	memset(img, 0, sizeof(img));
-	if(!gimg) return;
+	if(!gimg) return NULL;
+
+	//Get gimg's blob
+	GetExceptionInfo(&ex);
+	blob = gm_image_to_blob(gimg, &blen, &ex);
+	
+	// We need room for our fixed data + our header + the bytea (data + header):
+	img = (PPImage *) palloc(FIXED_DATA_LEN + blen + 2*VARHDRSZ);
+	// Init imgdata with blob
+	SET_VARSIZE(&img->imgdata, blen + VARHDRSZ);
+	memcpy(VARDATA(&img->imgdata), blob, blen);
+	SET_VARSIZE(img, FIXED_DATA_LEN + blen + VARHDRSZ );
+	free(blob);
 
 	//Data we have in Image
 	img->width = gimg->columns;
@@ -654,6 +611,8 @@ void	pp_init_image(PPImage * img, Image * gimg)
    	img->exposure_t = pp_parse_float(attr);
    	attr = gm_image_getattr(gimg, ATTR_ISO);
    	img->iso = pp_parse_int(attr);
+		
+	return img;
 }
 
 int	lo_size(int32 fd)
@@ -690,24 +649,3 @@ void *  lo_readblob(Oid loid, int * blen)
 
 	return buf;	
 }
-
-void	lo_writeblob(Oid loid, void * data, int datalen)
-{
-    Datum fd_d;
-    int32 fd;
-    
-    fd_d = DirectFunctionCall2(lo_open, ObjectIdGetDatum(loid), Int32GetDatum(INV_WRITE));
-    fd = DatumGetInt32(fd_d);
-    lo_write(fd, data, datalen);
-    DirectFunctionCall1(lo_close, Int32GetDatum(fd));
-}
-
-/*
- * The easyest way to check...
- */
-/*
-void _PG_init()
-{
-	elog(NOTICE, "type image's size is: %d", sizeof(PPImage));
-}
-*/

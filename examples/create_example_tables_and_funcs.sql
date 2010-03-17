@@ -24,20 +24,6 @@ CREATE TABLE album_images (
 	CONSTRAINT fk_ai_images FOREIGN KEY (iid) REFERENCES images (iid)
 );
 
-CREATE OR REPLACE FUNCTION on_delete_image() RETURNS TRIGGER AS 
-$BODY$BEGIN
-	PERFORM lo_unlink(oid(OLD.the_img));
-	RETURN OLD;
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN OLD;
-END$BODY$
-LANGUAGE 'plpgsql';
-
-DROP TRIGGER t_delete_image ON images;
-CREATE TRIGGER t_delete_image AFTER DELETE ON images 
-	FOR EACH ROW EXECUTE PROCEDURE on_delete_image();
-
 -- A sample callback for postpic_import and related funcs
 CREATE OR REPLACE FUNCTION basename(ipath varchar)
 	RETURNS	VARCHAR	AS
@@ -137,7 +123,7 @@ $BODY$DECLARE
    loid OID;
 BEGIN
       SELECT INTO loid lo_import(ipath);
-      INSERT INTO images (the_img, name) values(image_create_from_loid(loid), iname);
+      INSERT INTO images (the_img, name) values(image_from_large_object(loid), iname);
 END$BODY$
 LANGUAGE 'plpgsql';
 
