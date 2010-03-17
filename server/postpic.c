@@ -72,6 +72,10 @@ typedef struct {
 #define	PP_VERSION_MAJOR	9
 #define	PP_VERSION_MINOR	0
 
+/*
+ * Helpful macros
+ */
+#define PG_GETARG_IMAGE(x) PG_DETOAST_DATUM(PG_GETARG_POINTER(x))
 
 /*
  * Mandatory and factory methods 
@@ -153,7 +157,7 @@ Datum       image_in(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(image_out);
 Datum       image_out(PG_FUNCTION_ARGS)
 {
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
 	return DirectFunctionCall1(byteaout, PointerGetDatum(&img->imgdata));
 }
 
@@ -177,7 +181,7 @@ Datum   image_thumbnail(PG_FUNCTION_ARGS)
 	PPImage * img, *res;
 	Image * gimg, * timg;
 	
-	img = (PPImage *) PG_GETARG_POINTER(0);
+	img = (PPImage *) PG_GETARG_IMAGE(0);
 	size = PG_GETARG_INT32(1);
 	gimg = gm_image_from_bytea(&img->imgdata);
 	if(img->width >= img->height) {
@@ -205,7 +209,7 @@ Datum   image_resize(PG_FUNCTION_ARGS)
 	PPImage * img, * res;
 	Image * gimg, * timg;
 	
-	img = (PPImage *) PG_GETARG_POINTER(0);
+	img = (PPImage *) PG_GETARG_IMAGE(0);
 	sx = PG_GETARG_INT32(1);
 	sy = PG_GETARG_INT32(2);
 
@@ -229,7 +233,7 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 	PPImage * img, *res;
 	Image * gimg, * timg;
 	
-	img = (PPImage *) PG_GETARG_POINTER(0);
+	img = (PPImage *) PG_GETARG_IMAGE(0);
 	cx = PG_GETARG_INT32(1);
 	cy = PG_GETARG_INT32(2);
 	cw = PG_GETARG_INT32(3);
@@ -257,7 +261,7 @@ Datum   image_rotate(PG_FUNCTION_ARGS)
 	PPImage * img, *res;
 	Image * gimg, * timg;
 	
-	img = (PPImage *) PG_GETARG_POINTER(0);
+	img = (PPImage *) PG_GETARG_IMAGE(0);
 	deg = PG_GETARG_FLOAT4(1);
 
 	gimg = gm_image_from_bytea(&img->imgdata);
@@ -280,7 +284,7 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	PPImage * img, * res;
 	Image * gimg, * timg, * simg;
 	
-	img = (PPImage *) PG_GETARG_POINTER(0);
+	img = (PPImage *) PG_GETARG_IMAGE(0);
 	size = PG_GETARG_INT32(1);
 	gimg = gm_image_from_bytea(&img->imgdata);
 
@@ -398,21 +402,21 @@ Datum	postpic_version_minor(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(image_width);
 Datum	image_width(PG_FUNCTION_ARGS)
 {
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
 	PG_RETURN_INT32(img->width);
 }
 
 PG_FUNCTION_INFO_V1(image_height);
 Datum	image_height(PG_FUNCTION_ARGS)
 {
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
 	PG_RETURN_INT32(img->height);
 }
 
 PG_FUNCTION_INFO_V1(image_date);
 Datum	image_date(PG_FUNCTION_ARGS)
 {
-	PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+	PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
 	if(TIMESTAMP_IS_NOBEGIN(img->date)) PG_RETURN_NULL();
 	PG_RETURN_TIMESTAMP(img->date);
 }
@@ -420,7 +424,7 @@ Datum	image_date(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(image_f_number);
 Datum	image_f_number(PG_FUNCTION_ARGS)
 {
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
     if(img->f_number > 0) {
     	PG_RETURN_FLOAT4(img->f_number);
 	}
@@ -430,7 +434,7 @@ Datum	image_f_number(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(image_exposure_time);
 Datum	image_exposure_time(PG_FUNCTION_ARGS)
 {
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
     if(img->exposure_t > 0) {
         PG_RETURN_FLOAT4(img->exposure_t);
     }
@@ -440,7 +444,7 @@ Datum	image_exposure_time(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(image_iso);
 Datum	image_iso(PG_FUNCTION_ARGS)
 {
-    PPImage * img = (PPImage *) PG_GETARG_POINTER(0);
+    PPImage * img = (PPImage *) PG_GETARG_IMAGE(0);
     if(img->iso > 0) {
         PG_RETURN_INT32(img->iso);
     }

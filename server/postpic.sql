@@ -17,7 +17,8 @@ CREATE FUNCTION image_out ( image )
 CREATE TYPE image (
    input = image_in,
    output = image_out,
-   internallength = variable
+   internallength = variable,
+   storage = EXTERNAL
 );
 
 /*
