@@ -346,8 +346,8 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	GetImageInfo(&iinfo);
 	GetMontageInfo(&iinfo, &minfo);
 	minfo.geometry = pstrdup("+4+4");
-	str = palloc(INTLEN);
-	sprintf(str, "%d", tile);
+	str = palloc(2*INTLEN);
+	sprintf(str, "%dx%d", tile, (nimgs % tile ? nimgs/tile+1 : nimgs/tile));
 	minfo.tile = str;
 	sz = VARSIZE(title) - VARHDRSZ;
 	str = palloc(sz + 1);
