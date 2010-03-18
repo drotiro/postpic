@@ -14,9 +14,21 @@ CREATE FUNCTION image_out ( image )
    AS '$libdir/postpic'
    LANGUAGE C IMMUTABLE STRICT;     
 
+CREATE FUNCTION image_send ( image )
+	RETURNS bytea
+	AS '$libdir/postpic'
+	LANGUAGE C IMMUTABLE STRICT;
+	
+CREATE FUNCTION image_recv ( internal )
+	RETURNS image
+	AS '$libdir/postpic'
+	LANGUAGE C IMMUTABLE STRICT;
+
 CREATE TYPE image (
    input = image_in,
    output = image_out,
+   receive = image_recv,
+   send = image_send,
    internallength = variable,
    storage = EXTERNAL
 );

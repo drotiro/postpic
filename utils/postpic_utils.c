@@ -67,6 +67,11 @@ char * askpass(const char * what)
   return val;
 }
 
+void pp_print_error(const char * msg)
+{
+	fprintf(stderr, "ERROR: %s\n", msg);
+}
+
 #define PP_ADDPROP(NAME) if(opts->NAME) { strcat(buf, " " #NAME " = "); strcat(buf,opts->NAME); }
 PGconn * pp_connect(pp_connect_options * opts)
 {
@@ -79,3 +84,4 @@ PGconn * pp_connect(pp_connect_options * opts)
 	
 	return PQconnectdb(buf);
 }
+#undef PP_ADDPROD

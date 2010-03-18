@@ -28,7 +28,7 @@ typedef struct pp_connect_options {
 
 void pp_parse_connect_opt(char c, pp_connect_options * opts);
 
-PGconn * pp_connect(pp_connect_options * opts);
-
+PGconn *	pp_connect(pp_connect_options * opts);
+void		pp_print_error(const char * msg);
 #endif
 //PP_UTILS_H
