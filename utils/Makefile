@@ -1,10 +1,14 @@
 CFLAGS = -I `pg_config --includedir`
 LIBS = -L `pg_config --libdir` -lpq
+PREFIX = /usr/local
+BINDIR = ${PREFIX}/bin
 
 UTILS = postpic_import
 postpic_import_OBJS = postpic_import.o postpic_utils.o
 
 all:	${UTILS}
+install:	all
+	cp ${UTILS} ${BINDIR}
 
 .SECONDEXPANSION:
 ${UTILS}:	$$($$@_OBJS)
