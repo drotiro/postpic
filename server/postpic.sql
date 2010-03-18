@@ -96,24 +96,17 @@ CREATE FUNCTION rotate_right ( image )
 		SELECT rotate($1, 90)
 	$$ LANGUAGE SQL IMMUTABLE STRICT;
 
-CREATE FUNCTION montage_reduce (image[], INT, INT )
+CREATE FUNCTION index (image[], VARCHAR, INT )
 	RETURNS image
-	AS '$libdir/postpic', 'image_montage_reduce'
+	AS '$libdir/postpic', 'image_index'
 	LANGUAGE C STRICT;
 
-/*
-CREATE FUNCTION array_append_imgoid( oid[], image ) 
-	RETURNS oid[] AS $$
-		SELECT array_append ($1, oid($2)::oid)
-	$$ LANGUAGE SQL STRICT;
-
-CREATE AGGREGATE index ( image )
+CREATE AGGREGATE tile ( image )
 (
-	sfunc = array_append_imgoid,
-	stype = oid[],
+	sfunc = array_append,
+	stype = image[],
 	initcond = '{}'
 );
-*/
 
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
@@ -134,13 +127,6 @@ CREATE FUNCTION postpic_version_minor ( )
    RETURNS INT
    AS '$libdir/postpic'
    LANGUAGE C IMMUTABLE STRICT;
-
-CREATE OR REPLACE FUNCTION null_image()
-   RETURNS IMAGE AS
-$BODY$BEGIN
-   RETURN image_create_from_loid(0);
-END$BODY$
-LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION size ( i image )
 	RETURNS INT AS

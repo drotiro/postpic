@@ -114,7 +114,7 @@ Datum	image_rotate(PG_FUNCTION_ARGS);
 /*
  * Aggregate functions
  */
-Datum   image_montage_reduce(PG_FUNCTION_ARGS);
+Datum   image_index(PG_FUNCTION_ARGS);
 
 /*
  * Internal and GraphicsMagick's
@@ -311,49 +311,56 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(res);		
 }
 
-PG_FUNCTION_INFO_V1(image_montage_reduce);
-Datum	image_montage_reduce(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(image_index);
+Datum	image_index(PG_FUNCTION_ARGS)
 {
 	ArrayType * aimgs;
 	Image * gimg, * rimg;
-	int4 rsize, tsize, tile;
+	int4 tile, offset, sz;
 	int nimgs, i, istart;
 	ImageInfo iinfo;
 	MontageInfo minfo;
 	ExceptionInfo ex;
-	PPImage * data, *res;
-	char * str;
+	PPImage * ptr, *res;
+	char * str, * data;
+	VarChar * title;
 	
 	aimgs = PG_GETARG_ARRAYTYPE_P(0);
-	rsize = PG_GETARG_INT32(1);
-	tsize = PG_GETARG_INT32(2);
-	tile = rsize/(tsize+4);
+	title = PG_GETARG_VARCHAR_P(1);
+	tile = PG_GETARG_INT32(2);
 	
-	gimg = NewImageList();
 	nimgs = ARR_DIMS(aimgs)[0];
+	if(nimgs==0) PG_RETURN_NULL();
 	istart = ARR_LBOUND(aimgs)[0]-1;
-	data = (PPImage *) ARR_DATA_PTR(aimgs);
+	data =  ARR_DATA_PTR(aimgs);
+	gimg = NewImageList();
+	elog(NOTICE, "Array size in bytes is: %d, data offset is %d", VARSIZE(aimgs),
+		ARR_DATA_PTR(aimgs) - (char*)aimgs);
 	for(i = istart; i < istart+nimgs; ++i) {
-		AppendImageToList(&gimg, gm_image_from_bytea(&data[i].imgdata));
-		//elog(NOTICE, "Oid is: %d", data[i]);
+		ptr = (PPImage *) data;
+		AppendImageToList(&gimg, gm_image_from_bytea(& ptr->imgdata));
+		sz = VARSIZE(data);
+		offset = sz; if (sz % 4) offset += (4 - (sz % 4));
+		elog(NOTICE, "Skipping %d bytes", offset);
+		data += offset;
 	}
 	
 	GetImageInfo(&iinfo);
 	GetMontageInfo(&iinfo, &minfo);
-	str = palloc(3*INTLEN);
-	sprintf(str, "%dx%d+4+4",tsize, tsize);
-	minfo.geometry = str;
+	minfo.geometry = pstrdup("+4+4");
 	str = palloc(INTLEN);
 	sprintf(str, "%d", tile);
 	minfo.tile = str;
-	minfo.title = pstrdup("PostPic index");
+	str = palloc(VARSIZE(title) - VARHDRSZ + 1);
+	strncpy(str, VARDATA(title), VARSIZE(title) - VARHDRSZ);
+	minfo.title = str;
 	minfo.shadow=1;
 	GetExceptionInfo(&ex);
 	rimg = MontageImages(gimg, &minfo, &ex);
 	CatchException(&ex);
 	
 	//So sad, it doesn't work if I don't write the img :((
-	sprintf(rimg->filename, "/tmp/ppm%d_%d.jpg", rsize, tsize);
+	sprintf(rimg->filename, "/tmp/ppm%d_%s.jpg", tile, minfo.title );
 	WriteImage(&iinfo, rimg);
     CatchException(&ex);
     if(!rimg) {
