@@ -334,14 +334,12 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	istart = ARR_LBOUND(aimgs)[0]-1;
 	data =  ARR_DATA_PTR(aimgs);
 	gimg = NewImageList();
-	elog(NOTICE, "Array size in bytes is: %d, data offset is %d", VARSIZE(aimgs),
-		ARR_DATA_PTR(aimgs) - (char*)aimgs);
 	for(i = istart; i < istart+nimgs; ++i) {
 		ptr = (PPImage *) data;
 		AppendImageToList(&gimg, gm_image_from_bytea(& ptr->imgdata));
+		/* go to next image, taking padding into account */
 		sz = VARSIZE(data);
 		offset = sz; if (sz % 4) offset += (4 - (sz % 4));
-		elog(NOTICE, "Skipping %d bytes", offset);
 		data += offset;
 	}
 	
@@ -351,8 +349,10 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	str = palloc(INTLEN);
 	sprintf(str, "%d", tile);
 	minfo.tile = str;
-	str = palloc(VARSIZE(title) - VARHDRSZ + 1);
-	strncpy(str, VARDATA(title), VARSIZE(title) - VARHDRSZ);
+	sz = VARSIZE(title) - VARHDRSZ;
+	str = palloc(sz + 1);
+	strncpy(str, VARDATA(title), sz);
+	str[sz]=0;
 	minfo.title = str;
 	minfo.shadow=1;
 	GetExceptionInfo(&ex);
@@ -370,11 +370,12 @@ Datum	image_index(PG_FUNCTION_ARGS)
     else {
     	res = pp_init_image(rimg);
 	}
-	unlink(rimg->filename);
+	str = rimg->filename;
 
 	DestroyImageList(gimg);
 	DestroyExceptionInfo(&ex);
 	gm_image_destroy(rimg);
+	unlink(str);
 	if(res) PG_RETURN_POINTER(res);
 	PG_RETURN_NULL();
 }
