@@ -18,7 +18,7 @@ jdbc-clean:
 	@ant -f jdbc/build.xml clean
 
 install: postpic
-	$(foreach i,$(SUBDIRS), make -C $i install)
+	@$(foreach i,$(SUBDIRS), make -C $i install; )
 
 all: postpic jdbc
 clean-all: clean jdbc-clean
