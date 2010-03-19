@@ -113,13 +113,6 @@ CREATE FUNCTION index (image[], VARCHAR, INT )
 	AS '$libdir/postpic', 'image_index'
 	LANGUAGE C STRICT;
 
-CREATE AGGREGATE tile ( image )
-(
-	sfunc = array_append,
-	stype = image[],
-	initcond = '{}'
-);
-
 CREATE FUNCTION postpic_version ( )
    RETURNS cstring
    AS '$libdir/postpic'
