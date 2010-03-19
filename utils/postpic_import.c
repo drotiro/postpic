@@ -89,6 +89,10 @@ void pp_import(PGconn * conn, const char * file)
 	}
 	len = st.st_size;
 	val = malloc(len);
+	if(!val) {
+		pp_print_error("Out of memory");
+		return;
+	}
 	fimg = fopen(file, "r");
 	fread(val, 1, len, fimg);
 	fclose(fimg);
@@ -101,8 +105,10 @@ void pp_import(PGconn * conn, const char * file)
 			&len,
 			&binFmt,
 			1);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK) pp_print_error(PQerrorMessage(conn));		
+	if (PQresultStatus(res) != PGRES_TUPLES_OK) pp_print_error(PQerrorMessage(conn));
 	PQclear(res);
+	free(val);
+	fprintf(stderr, "INFO: imported file %s\n", file);
 }
 
 int main(int argc, char * argv[])
