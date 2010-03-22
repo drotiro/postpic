@@ -68,6 +68,7 @@ typedef struct {
 #define ATTR_EXPT	"EXIF:ExposureTime"
 #define ATTR_FNUM	"EXIF:FNumber"
 #define ATTR_ISO	"EXIF:ISOSpeedRatings"
+#define ATTR_FLEN	"EXIF:FocalLength"
 #define	PP_VERSION_RELEASE	0
 #define	PP_VERSION_MAJOR	9
 #define	PP_VERSION_MINOR	0
@@ -103,6 +104,7 @@ Datum	image_date(PG_FUNCTION_ARGS);
 Datum	image_f_number(PG_FUNCTION_ARGS);
 Datum	image_exposure_time(PG_FUNCTION_ARGS);
 Datum	image_iso(PG_FUNCTION_ARGS);
+Datum	image_focal_length(PG_FUNCTION_ARGS);
 
 /*
  * Image processing functions
@@ -485,6 +487,17 @@ Datum	image_iso(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
+
+PG_FUNCTION_INFO_V1(image_focal_length);
+Datum   image_focal_length(PG_FUNCTION_ARGS)
+{
+	PPImage * img = PG_GETARG_IMAGE(0);
+	if(img->focal_l > 0) {
+        PG_RETURN_FLOAT4(img->focal_l);
+    }
+    PG_RETURN_NULL();
+}
+
 void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
 {
 	ImageInfo *iinfo;
@@ -605,6 +618,7 @@ float4		pp_parse_float(const char * str)
     if(!str || !str[0]) return -1;
     if(index(str, '/')==NULL) return strtod(str,NULL);
     sscanf(str, "%f/%f", &s, &g);
+    elog(NOTICE, "leggo %s, scrivo %f", str, s/g);
     return s/g;
 }
 
@@ -649,6 +663,8 @@ PPImage *	pp_init_image(Image * gimg)
    	img->exposure_t = pp_parse_float(attr);
    	attr = gm_image_getattr(gimg, ATTR_ISO);
    	img->iso = pp_parse_int(attr);
+   	attr = gm_image_getattr(gimg, ATTR_FLEN);
+   	img->focal_l = pp_parse_float(attr);
 		
 	return img;
 }

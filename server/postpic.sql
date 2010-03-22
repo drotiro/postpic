@@ -73,6 +73,11 @@ CREATE FUNCTION iso ( image )
    AS '$libdir/postpic', 'image_iso'
    LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION focal_length ( image )
+   RETURNS FLOAT4
+   AS '$libdir/postpic', 'image_focal_length'
+   LANGUAGE C IMMUTABLE STRICT;
+
 CREATE FUNCTION thumbnail ( image, INT )
 	RETURNS image
 	AS '$libdir/postpic', 'image_thumbnail'
