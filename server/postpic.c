@@ -618,7 +618,6 @@ float4		pp_parse_float(const char * str)
     if(!str || !str[0]) return -1;
     if(index(str, '/')==NULL) return strtod(str,NULL);
     sscanf(str, "%f/%f", &s, &g);
-    elog(NOTICE, "leggo %s, scrivo %f", str, s/g);
     return s/g;
 }
 
