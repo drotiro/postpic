@@ -33,6 +33,16 @@ CREATE TYPE image (
    storage = EXTERNAL
 );
 
+-- Support type
+CREATE TYPE colorspace as ENUM (
+	'Unknown',
+	'RGB',
+	'RGBA',
+	'Gray',
+	'sRGB',
+	'CMYK'
+);
+
 /*
  * Make sure plpgsql is in
  */

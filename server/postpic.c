@@ -31,6 +31,7 @@
 #include <utils/elog.h>
 #include <utils/builtins.h>
 #include <utils/array.h>
+#include <utils/syscache.h>
 /* GM-related includes */
 #include <magick/api.h>
 /* Others */
@@ -49,14 +50,31 @@ typedef struct {
 	Timestamp	date;
 	int4	width;
 	int4	height;
-	int4	cspace;
+	Oid		cspace;
 	int4	iso;
 	float4	f_number;
-	float4 exposure_t;
-	float4 focal_l;
+	float4	exposure_t;
+	float4	focal_l;
 	/* FIXED_DATA_END */
 	bytea imgdata;
 } PPImage;
+
+/* Colorspace Handling */
+typedef struct {
+	char * name;
+	Oid oid;
+} PPColorspace;
+
+PPColorspace colorspaces[] = {
+	{ "Unknown", InvalidOid },
+	{ "RGB",  InvalidOid },
+	{ "RGBA",  InvalidOid },
+	{ "Gray", InvalidOid },
+	{ "sRGB",  InvalidOid },
+	{ "CMYK",  InvalidOid },
+	{ NULL, InvalidOid }
+};
+	                    
 
 /* Some constant */
 #define BUFSIZE		8192
@@ -520,7 +538,6 @@ Image *		gm_image_from_lob(Oid loid)
 	void * blob;
 
 	if(!OidIsValid(loid)) return NULL;
-	//elog(NOTICE, "Reading image from lob %d", loid);
 	GetExceptionInfo(&ex);
 	iinfo = CloneImageInfo(NULL);
 	blob = lo_readblob(loid, &blen);
@@ -701,4 +718,28 @@ void *  lo_readblob(Oid loid, int * blen)
 	DirectFunctionCall1(lo_close, Int32GetDatum(fd));
 
 	return buf;	
+}
+
+// let's make compiler happy
+void _PG_init(void);
+
+/* 
+ * This function is called when the PostPic extension is loaded
+ * into the server.
+ * We use this to get colorspace enum's oids from SysCache and
+ * save them for later use
+ */
+void _PG_init()
+{
+	Oid csOid, pOid;
+	int i;
+	pOid = GetSysCacheOid(NAMESPACENAME,
+		CStringGetDatum("public"), 0, 0, 0);
+	csOid = GetSysCacheOid(TYPENAMENSP,
+		CStringGetDatum("colorspace"), 
+		pOid, 0, 0);
+	for(i = 0; colorspaces[i].name!=NULL; ++i) {
+		colorspaces[i].oid = GetSysCacheOid(ENUMTYPOIDNAME, csOid,
+			CStringGetDatum(colorspaces[i].name), 0, 0);
+	}
 }
