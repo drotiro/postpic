@@ -74,7 +74,15 @@ PPColorspace colorspaces[] = {
 	{ "CMYK",  InvalidOid },
 	{ NULL, InvalidOid }
 };
-	                    
+
+static Oid colorspace_oid;
+
+#define CS_UNKNOWN colorspaces[0]
+#define CS_RGB colorspaces[1]
+#define CS_RGBA colorspaces[2]
+#define CS_GRAY colorspaces[3]
+#define CS_sRGB colorspaces[4]
+#define CS_CMYK colorspaces[5]
 
 /* Some constant */
 #define BUFSIZE		8192
@@ -123,6 +131,7 @@ Datum	image_f_number(PG_FUNCTION_ARGS);
 Datum	image_exposure_time(PG_FUNCTION_ARGS);
 Datum	image_iso(PG_FUNCTION_ARGS);
 Datum	image_focal_length(PG_FUNCTION_ARGS);
+Datum	image_colorspace(PG_FUNCTION_ARGS);
 
 /*
  * Image processing functions
@@ -148,6 +157,7 @@ char *		pp_timestamp2str(Timestamp ts);
 int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
+Oid			pp_parse_cstype(const ColorspaceType t);
 // image (GraphicsMagick) building and destroying
 Image *		gm_image_from_lob(Oid loid);
 Image *		gm_image_from_bytea(bytea * imgdata);
@@ -516,6 +526,16 @@ Datum   image_focal_length(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
+PG_FUNCTION_INFO_V1(image_colorspace);
+Datum	image_colorspace(PG_FUNCTION_ARGS)
+{
+	PPImage * img = PG_GETARG_IMAGE(0);
+	elog(NOTICE, "Returning enum for type %d, value %d", colorspace_oid, img->cspace);
+	//return DirectFunctionCall2(enum_in, ObjectIdGetDatum(colorspace_oid), 
+	//	ObjectIdGetDatum(img->cspace));
+	return ObjectIdGetDatum(img->cspace);
+}
+
 void * gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex)
 {
 	ImageInfo *iinfo;
@@ -609,7 +629,7 @@ Timestamp	pp_str2timestamp(const char * edate)
 	return res;
 }
 
-char*		pp_timestamp2str(Timestamp ts)
+char*	pp_timestamp2str(Timestamp ts)
 {
 	/* postgres tax */
 	int tzp;
@@ -629,7 +649,7 @@ char*		pp_timestamp2str(Timestamp ts)
 	return res;
 }
 
-float4		pp_parse_float(const char * str)
+float4	pp_parse_float(const char * str)
 {
     float s=-1,g=1;
     if(!str || !str[0]) return -1;
@@ -642,6 +662,18 @@ int		pp_parse_int(char * str)
 {
 	if(!str || !isdigit(str[0])) return -1;
 	return pg_atoi(str, 4, 0);
+}
+
+Oid		pp_parse_cstype(const ColorspaceType t)
+{
+	switch (t) {
+		case RGBColorspace: return CS_RGB.oid;
+		case TransparentColorspace: return CS_RGBA.oid;
+		case GRAYColorspace: return CS_GRAY.oid;
+		case sRGBColorspace: return CS_sRGB.oid;
+		case CMYKColorspace: return CS_CMYK.oid;	
+		default: return CS_UNKNOWN.oid;
+	}
 }
 
 PPImage *	pp_init_image(Image * gimg)
@@ -669,6 +701,7 @@ PPImage *	pp_init_image(Image * gimg)
 	//Data we have in Image
 	img->width = gimg->columns;
 	img->height = gimg->rows;
+	img->cspace = pp_parse_cstype(gimg->colorspace);
 	
 	//Data read from attributes
 	attr = gm_image_getattr(gimg, ATTR_TIME);
@@ -738,6 +771,7 @@ void _PG_init()
 	csOid = GetSysCacheOid(TYPENAMENSP,
 		CStringGetDatum("colorspace"), 
 		pOid, 0, 0);
+	colorspace_oid = csOid;
 	for(i = 0; colorspaces[i].name!=NULL; ++i) {
 		colorspaces[i].oid = GetSysCacheOid(ENUMTYPOIDNAME, csOid,
 			CStringGetDatum(colorspaces[i].name), 0, 0);
