@@ -97,7 +97,7 @@ static Oid colorspace_oid;
 #define ATTR_FLEN	"EXIF:FocalLength"
 #define	PP_VERSION_RELEASE	0
 #define	PP_VERSION_MAJOR	9
-#define	PP_VERSION_MINOR	0
+#define	PP_VERSION_MINOR	1
 
 /*
  * Helpful macros
