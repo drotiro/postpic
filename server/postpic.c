@@ -714,18 +714,26 @@ Oid		pp_parse_cstype(const ColorspaceType t)
 
 void	pp_parse_color(const char * str, PPColor * color)
 {
-	if(!str || !str[0]) {
+	char cs[COLORLEN], cd[COLORLEN];
+	int i = 0;
+	
+	while(str[i] && str[i]!='#') ++i;
+	if(!str[i]) {
 		color->cs = InvalidOid;
 		return;
 	}
+	strncpy(cs, str, i); cs[i]=0;
+	strcpy(cd, str + i + 1);
+	elog(NOTICE, "got cs %s and data %s", cs, cd);
 	
-	switch(str[0]) {
-		case '#':
-			color->cd = (int4) strtol(&str[1], NULL, 16);
-			color->cs = (strlen(str)==7 ? CS_RGB.oid : CS_RGBA.oid);
-		break;
-		default:
-			color->cs = InvalidOid;
+	color->cd = (int4) strtol(cd, NULL, 16);
+	if(!cs[0]) {
+		color->cs = (strlen(cd)>6 ? CS_RGBA.oid : CS_RGB.oid);
+	} else {
+		i = 1;
+		while(colorspaces[i].name && strcmp(cs, colorspaces[i].name)) ++i;
+		if(!(colorspaces[i].name)) i=0;
+		color->cs = colorspaces[i].oid;
 	}
 }
 
