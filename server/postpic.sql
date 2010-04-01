@@ -33,7 +33,7 @@ CREATE TYPE image (
    storage = EXTERNAL
 );
 
--- Support type
+-- Support type 'colorspace'
 CREATE TYPE colorspace as ENUM (
 	'Unknown',
 	'RGB',
@@ -41,6 +41,25 @@ CREATE TYPE colorspace as ENUM (
 	'Gray',
 	'sRGB',
 	'CMYK'
+);
+
+-- and color
+CREATE TYPE color;
+
+CREATE FUNCTION color_in ( cstring )
+   RETURNS color
+   AS '$libdir/postpic'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION color_out ( color )
+   RETURNS cstring
+   AS '$libdir/postpic'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE TYPE color (
+	input = color_in,
+	output = color_out,
+	internallength = 8
 );
 
 /*

@@ -77,6 +77,12 @@ PPColorspace colorspaces[] = {
 
 static Oid colorspace_oid;
 
+/* Color representation */
+typedef struct {
+	Oid		cs;
+	int4	cd;
+} PPColor;
+
 #define CS_UNKNOWN colorspaces[0]
 #define CS_RGB colorspaces[1]
 #define CS_RGBA colorspaces[2]
@@ -88,6 +94,7 @@ static Oid colorspace_oid;
 #define BUFSIZE		8192
 #define INTLEN		20
 #define DATELEN		20
+#define COLORLEN	18
 #define VERLEN		128
 #define FIXED_DATA_LEN	36
 #define ATTR_TIME	"EXIF:DateTimeOriginal"
@@ -112,6 +119,9 @@ Datum	image_out(PG_FUNCTION_ARGS);
 Datum	image_send(PG_FUNCTION_ARGS);
 Datum	image_recv(PG_FUNCTION_ARGS);
 Datum	image_from_large_object(PG_FUNCTION_ARGS);
+
+Datum	color_in(PG_FUNCTION_ARGS);
+Datum	color_out(PG_FUNCTION_ARGS);
 
 /*
  * A bit of info about ourselves
@@ -158,6 +168,7 @@ int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
 Oid			pp_parse_cstype(const ColorspaceType t);
+void		pp_parse_color(const char * str, PPColor * color);
 // image (GraphicsMagick) building and destroying
 Image *		gm_image_from_lob(Oid loid);
 Image *		gm_image_from_bytea(bytea * imgdata);
@@ -227,6 +238,31 @@ Datum   image_recv(PG_FUNCTION_ARGS)
     img = pp_init_image(gimg);
     gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
+}
+
+PG_FUNCTION_INFO_V1(color_in);
+Datum	color_in(PG_FUNCTION_ARGS)
+{
+	char * cstr;
+	PPColor * color;
+	
+	cstr = PG_GETARG_CSTRING(0);
+	color = palloc(sizeof(PPColor));
+	pp_parse_color(cstr, color);
+	
+	PG_RETURN_POINTER(color);
+}
+
+PG_FUNCTION_INFO_V1(color_out);
+Datum   color_out(PG_FUNCTION_ARGS)
+{
+	int i = 1;
+	char * str = palloc (COLORLEN);
+	PPColor * color = (PPColor*) PG_GETARG_POINTER(0);
+	while (colorspaces[i].name && color->cs!=colorspaces[i].oid) ++i;
+	if (!(colorspaces[i].name)) i=0;
+	sprintf(str, "%s#%x", colorspaces[i].name, color->cd);
+	PG_RETURN_CSTRING(str);
 }
 
 PG_FUNCTION_INFO_V1(image_thumbnail);
@@ -673,6 +709,23 @@ Oid		pp_parse_cstype(const ColorspaceType t)
 		case sRGBColorspace: return CS_sRGB.oid;
 		case CMYKColorspace: return CS_CMYK.oid;	
 		default: return CS_UNKNOWN.oid;
+	}
+}
+
+void	pp_parse_color(const char * str, PPColor * color)
+{
+	if(!str || !str[0]) {
+		color->cs = InvalidOid;
+		return;
+	}
+	
+	switch(str[0]) {
+		case '#':
+			color->cd = (int4) strtol(&str[1], NULL, 16);
+			color->cs = (strlen(str)==7 ? CS_RGB.oid : CS_RGBA.oid);
+		break;
+		default:
+			color->cs = InvalidOid;
 	}
 }
 
