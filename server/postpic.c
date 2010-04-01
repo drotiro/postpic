@@ -79,8 +79,8 @@ static Oid colorspace_oid;
 
 /* Color representation */
 typedef struct {
-	Oid		cs;
-	int4	cd;
+	Oid	cs;
+	unsigned int cd;
 } PPColor;
 
 #define CS_UNKNOWN colorspaces[0]
@@ -724,9 +724,8 @@ void	pp_parse_color(const char * str, PPColor * color)
 	}
 	strncpy(cs, str, i); cs[i]=0;
 	strcpy(cd, str + i + 1);
-	elog(NOTICE, "got cs %s and data %s", cs, cd);
 	
-	color->cd = (int4) strtol(cd, NULL, 16);
+	color->cd = strtoll(cd, NULL, 16);
 	if(!cs[0]) {
 		color->cs = (strlen(cd)>6 ? CS_RGBA.oid : CS_RGB.oid);
 	} else {
