@@ -67,6 +67,11 @@ CREATE TYPE color (
  */
 CREATE LANGUAGE plpgsql;
 
+CREATE FUNCTION image_new( INT, INT, color )
+	RETURNS image
+	AS '$libdir/postpic'
+	LANGUAGE C STRICT;
+
 CREATE FUNCTION image_from_large_object( oid )
    RETURNS image
    AS '$libdir/postpic'

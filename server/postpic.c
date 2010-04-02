@@ -119,6 +119,7 @@ Datum	image_out(PG_FUNCTION_ARGS);
 Datum	image_send(PG_FUNCTION_ARGS);
 Datum	image_recv(PG_FUNCTION_ARGS);
 Datum	image_from_large_object(PG_FUNCTION_ARGS);
+Datum	image_new(PG_FUNCTION_ARGS);
 
 Datum	color_in(PG_FUNCTION_ARGS);
 Datum	color_out(PG_FUNCTION_ARGS);
@@ -239,6 +240,42 @@ Datum   image_recv(PG_FUNCTION_ARGS)
     gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }
+
+PG_FUNCTION_INFO_V1(image_new);
+Datum   image_new(PG_FUNCTION_ARGS)
+{
+    PPImage * res;
+    Image * gimg, * timg;
+    PPColor * color;
+    int4 w, h;
+    ExceptionInfo ex;
+    ImageInfo * iinfo;
+
+	w = PG_GETARG_INT32(0);
+	h = PG_GETARG_INT32(1);
+	color = (PPColor*) PG_GETARG_POINTER(2);
+	GetExceptionInfo(&ex);
+
+	timg = ConstituteImage( 1, 1, // w x h
+                     "BGRA", // data interpretation
+                     CharPixel,
+                     &color->cd, // actual pixel data
+                     &ex );
+	iinfo = CloneImageInfo(NULL);
+	strcpy(iinfo->magick, "JPEG");
+	gimg = AllocateImage(iinfo);
+	gimg->columns = w;
+	gimg->rows = h;
+	TextureImage(gimg, timg);
+
+    res = pp_init_image(gimg);
+    gm_image_destroy(gimg);
+	gm_image_destroy(timg);
+    DestroyImageInfo(iinfo);
+    DestroyExceptionInfo(&ex);
+    PG_RETURN_POINTER(res);
+}
+
 
 PG_FUNCTION_INFO_V1(color_in);
 Datum	color_in(PG_FUNCTION_ARGS)
@@ -462,7 +499,7 @@ Datum	image_index(PG_FUNCTION_ARGS)
     else {
     	res = pp_init_image(rimg);
 	}
-	str = rimg->filename;
+	str = pstrdup(rimg->filename);
 
 	DestroyImageList(gimg);
 	DestroyExceptionInfo(&ex);
