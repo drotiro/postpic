@@ -250,14 +250,27 @@ Datum   image_new(PG_FUNCTION_ARGS)
     int4 w, h;
     ExceptionInfo ex;
     ImageInfo * iinfo;
+    char * map;
+    Oid ccs;
 
 	w = PG_GETARG_INT32(0);
 	h = PG_GETARG_INT32(1);
 	color = (PPColor*) PG_GETARG_POINTER(2);
 	GetExceptionInfo(&ex);
 
+	ccs = color->cs;
+	if(ccs == CS_RGB.oid || ccs == CS_sRGB.oid) {
+			map = "BGRP";
+    } else if(ccs == CS_RGBA.oid) {
+    	map = "ABGR";
+	} else if(ccs == CS_CMYK.oid) {
+		map = "KYMC";
+	} else {
+			elog(ERROR, "Unsupported colorspace %d", color->cs);
+			PG_RETURN_NULL();
+	}
 	timg = ConstituteImage( 1, 1, // w x h
-                     "BGRA", // data interpretation
+                     map, // data interpretation
                      CharPixel,
                      &color->cd, // actual pixel data
                      &ex );
