@@ -281,11 +281,11 @@ Datum   image_new(PG_FUNCTION_ARGS)
                      CharPixel,
                      &color->cd, // actual pixel data
                      &ex );
-	gimg = AllocateImage(iinfo);	
+	gimg = AllocateImage(iinfo);
 	gimg->columns = w;
 	gimg->rows = h;
-	TextureImage(gimg, timg);
 	TransformColorspace(gimg, iinfo->colorspace);
+	TextureImage(gimg, timg);
 
     res = pp_init_image(gimg);
     gm_image_destroy(gimg);
