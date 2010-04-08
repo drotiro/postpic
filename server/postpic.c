@@ -312,7 +312,7 @@ Datum   color_out(PG_FUNCTION_ARGS)
 	PPColor * color = (PPColor*) PG_GETARG_POINTER(0);
 	while (colorspaces[i].name && color->cs!=colorspaces[i].oid) ++i;
 	if (!(colorspaces[i].name)) i=0;
-	sprintf(str, "%s#%x", colorspaces[i].name, color->cd);
+	sprintf(str, "%s#%x", colorspaces[i].name, ntohl(color->cd));
 	PG_RETURN_CSTRING(str);
 }
 
@@ -617,9 +617,6 @@ PG_FUNCTION_INFO_V1(image_colorspace);
 Datum	image_colorspace(PG_FUNCTION_ARGS)
 {
 	PPImage * img = PG_GETARG_IMAGE(0);
-	elog(NOTICE, "Returning enum for type %d, value %d", colorspace_oid, img->cspace);
-	//return DirectFunctionCall2(enum_in, ObjectIdGetDatum(colorspace_oid), 
-	//	ObjectIdGetDatum(img->cspace));
 	return ObjectIdGetDatum(img->cspace);
 }
 
