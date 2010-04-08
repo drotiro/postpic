@@ -1,2 +1,2 @@
 Main-Class: postpic.CommandParser
-Class-Path: ../../../jdbc/lib/postgresql-8.4-701.jdbc4.jar ../../../jdbc/dist/postpic-jdbc-0.9.0.jar
+Class-Path: ../../../jdbc/lib/postgresql-8.4-701.jdbc4.jar ../../../jdbc/dist/postpic-jdbc-0.9.1.jar

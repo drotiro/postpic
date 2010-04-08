@@ -259,28 +259,33 @@ Datum   image_new(PG_FUNCTION_ARGS)
 	color = (PPColor*) PG_GETARG_POINTER(2);
 	GetExceptionInfo(&ex);
 
+	iinfo = CloneImageInfo(NULL);
+	strcpy(iinfo->magick, "JPEG");
 	ccs = color->cs;
 	if(ccs == CS_RGB.oid || ccs == CS_sRGB.oid) {
-			map = "PRGB";
+		map = "PRGB";
+		iinfo->colorspace = RGBColorspace;
     } else if(ccs == CS_RGBA.oid) {
     	map = "RGBA";
+    	iinfo->colorspace = TransparentColorspace;
 	} else if(ccs == CS_CMYK.oid) {
 		map = "CMYK";
+		iinfo->colorspace = CMYKColorspace;
 	} else {
-			elog(ERROR, "Unsupported colorspace %d", color->cs);
-			PG_RETURN_NULL();
+		elog(ERROR, "Unsupported colorspace %d", color->cs);
+		/* Not needed, just to make the compiler happy */
+		PG_RETURN_NULL();
 	}
 	timg = ConstituteImage( 1, 1, // w x h
                      map, // data interpretation
                      CharPixel,
                      &color->cd, // actual pixel data
                      &ex );
-	iinfo = CloneImageInfo(NULL);
-	strcpy(iinfo->magick, "JPEG");
-	gimg = AllocateImage(iinfo);
+	gimg = AllocateImage(iinfo);	
 	gimg->columns = w;
 	gimg->rows = h;
 	TextureImage(gimg, timg);
+	TransformColorspace(gimg, iinfo->colorspace);
 
     res = pp_init_image(gimg);
     gm_image_destroy(gimg);

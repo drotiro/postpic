@@ -45,4 +45,8 @@ public class PGImage extends PGobject {
 		Image i = ImageIO.read(new ByteArrayInputStream(bytea));
 		return i;
 	}
+	
+	public byte[] getRawData() {
+		return bytea;
+	}
 }

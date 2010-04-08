@@ -3,6 +3,7 @@ package postpic;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.io.Console;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,18 +13,18 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Vector;
 import javax.swing.JFrame;
-
 import postpic.ui.ImageViewer;
 
 public class CommandParser {
 	
-	enum QueryMode { SINGLE, THUMBS, PSQL }
+	enum QueryMode { SINGLE, THUMBS, PSQL, SAVE }
 	enum ImageType { IMAGE, TEMPORARY_IMAGE }
 		
 	private Console c;
 	private Connection conn;
 	QueryMode mode = QueryMode.SINGLE;
 	private ImageViewer v;
+	private String saveFile;
 
 	public CommandParser() {
 		c = System.console();
@@ -96,13 +97,17 @@ public class CommandParser {
 				rm = rs.getMetaData();
 				col = findImageColumn(rm);
 				fname = rm.getColumnName(col);
-				c.printf("Displaying column %s\n", fname);
+				c.printf("Using column %s\n", fname);
 				while(rs.next()) {
+					if (mode==QueryMode.SAVE) {
+						doSave((PGImage)rs.getObject(col));
+						break;
+					}
 					im = getImage(rs, col);
 					if(mode==QueryMode.SINGLE) {
 						display(new Image[] {im});
 						break;
-					}
+					} 
 					else {
 						imgs.add(im);
 					}
@@ -116,6 +121,17 @@ public class CommandParser {
 		}
 	}
 
+
+	private void doSave(PGImage im) throws Exception {
+		//not so efficient!
+		byte [] imgdata = im.getRawData();
+		c.printf("Saving %d bytes of data to file %s\n", imgdata.length, saveFile);
+		FileOutputStream fos = new FileOutputStream(saveFile);
+		fos.write(imgdata);
+		fos.close();
+		mode = QueryMode.SINGLE;
+		showMode();
+	}
 
 	private Image getImage(ResultSet rs, int col) throws SQLException, IOException {
 		PGImage pi = (PGImage) rs.getObject(col);
@@ -143,19 +159,27 @@ public class CommandParser {
 		int cc = m.getColumnCount();
 		for(int i = 1; i <= cc; ++i) {
 			ctn = m.getColumnTypeName(i);
-			if(ctn.equals("image") || ctn.equals("bytea"/* should be: "temporary_image"*/)) return i;
+			if(ctn.equals("image")) return i;
 		}
 		return -1;
 	}
 
 	private void parseCommand(String words[]) {
-		if((words.length != 3) || !"mode".equalsIgnoreCase(words[1])) {
+		if((words.length < 3) || !"mode".equalsIgnoreCase(words[1])) {
 			printHelp();
 			return;
 		}
-		if("single".equalsIgnoreCase(words[2])) { mode = QueryMode.SINGLE; showMode(); }
-		else if("thumbs".equalsIgnoreCase(words[2])) { mode = QueryMode.THUMBS; showMode(); }
-		else if("sql".equalsIgnoreCase(words[2])) { mode = QueryMode.PSQL; showMode(); }
+		String marg = words[2];
+		if("single".equalsIgnoreCase(marg)) { mode = QueryMode.SINGLE; showMode(); }
+		else if("thumbs".equalsIgnoreCase(marg)) { mode = QueryMode.THUMBS; showMode(); }
+		else if("sql".equalsIgnoreCase(marg)) { mode = QueryMode.PSQL; showMode(); }
+		else if("save".equalsIgnoreCase(marg)) {
+			if (words.length > 3) {
+				mode = QueryMode.SAVE;
+				saveFile = words[3];
+				showMode();
+			} else c.printf("set mode save needs a <filename> argument\n");
+		}
 		else {
 			c.printf("Invalid mode '%s', type 'help' for valid values\n", words[2]);
 		}
@@ -166,6 +190,7 @@ public class CommandParser {
 		switch (mode) {
 			case SINGLE: msg+="single"; break;
 			case THUMBS: msg+="thumbs"; break;
+			case SAVE: 	msg +="save. Will save to "+saveFile; break;
 			default: msg+="sql"; break;
 		}
 		System.out.println(msg);
@@ -176,6 +201,7 @@ public class CommandParser {
 		System.out.println("\t<query>:\texecutes the specified query\n\tquit (\\q):\texit this program");
 		System.out.println("\nQuery modes:\n\tsingle:\tdisplays the image in the first record");
 		System.out.println("\tthumbs:\tdisplays as many images fit in the output window");
+		System.out.println("\tsave <filename>:\tsaves the image to the specified file");
 		System.out.println("\tsql:\texecutes the query and displays server response");
 	}
 
