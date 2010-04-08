@@ -37,6 +37,7 @@
 /* Others */
 #include <stdio.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 PG_MODULE_MAGIC;
 
@@ -260,11 +261,11 @@ Datum   image_new(PG_FUNCTION_ARGS)
 
 	ccs = color->cs;
 	if(ccs == CS_RGB.oid || ccs == CS_sRGB.oid) {
-			map = "BGRP";
+			map = "PRGB";
     } else if(ccs == CS_RGBA.oid) {
-    	map = "ABGR";
+    	map = "RGBA";
 	} else if(ccs == CS_CMYK.oid) {
-		map = "KYMC";
+		map = "CMYK";
 	} else {
 			elog(ERROR, "Unsupported colorspace %d", color->cs);
 			PG_RETURN_NULL();
@@ -775,7 +776,7 @@ void	pp_parse_color(const char * str, PPColor * color)
 	strncpy(cs, str, i); cs[i]=0;
 	strcpy(cd, str + i + 1);
 	
-	color->cd = strtoll(cd, NULL, 16);
+	color->cd = htonl(strtoll(cd, NULL, 16));
 	if(!cs[0]) {
 		color->cs = (strlen(cd)>6 ? CS_RGBA.oid : CS_RGB.oid);
 	} else {
