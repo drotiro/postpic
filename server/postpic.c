@@ -511,6 +511,7 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	
 	//So sad, it doesn't work if I don't write the img :((
 	sprintf(rimg->filename, "%s/ppm%d_%s.jpg", tmpdir, tile, minfo.title );
+	str = pstrdup(rimg->filename);
 	WriteImage(&iinfo, rimg);
     CatchException(&ex);
     if(!rimg) {
@@ -520,7 +521,6 @@ Datum	image_index(PG_FUNCTION_ARGS)
     else {
     	res = pp_init_image(rimg);
 	}
-	str = pstrdup(rimg->filename);
 
 	DestroyImageList(gimg);
 	DestroyExceptionInfo(&ex);
