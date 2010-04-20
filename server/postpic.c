@@ -84,6 +84,8 @@ typedef struct {
 	unsigned int cd;
 } PPColor;
 
+char * tmpdir = "/tmp";
+
 #define CS_UNKNOWN colorspaces[0]
 #define CS_RGB colorspaces[1]
 #define CS_RGBA colorspaces[2]
@@ -508,7 +510,7 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	CatchException(&ex);
 	
 	//So sad, it doesn't work if I don't write the img :((
-	sprintf(rimg->filename, "/tmp/ppm%d_%s.jpg", tile, minfo.title );
+	sprintf(rimg->filename, "%s/ppm%d_%s.jpg", tmpdir, tile, minfo.title );
 	WriteImage(&iinfo, rimg);
     CatchException(&ex);
     if(!rimg) {
@@ -879,6 +881,9 @@ void _PG_init()
 {
 	Oid csOid, pOid;
 	int i;
+	char * tde;
+	
+	/* Read colorspace Oids */
 	pOid = GetSysCacheOid(NAMESPACENAME,
 		CStringGetDatum("public"), 0, 0, 0);
 	csOid = GetSysCacheOid(TYPENAMENSP,
@@ -889,4 +894,8 @@ void _PG_init()
 		colorspaces[i].oid = GetSysCacheOid(ENUMTYPOIDNAME, csOid,
 			CStringGetDatum(colorspaces[i].name), 0, 0);
 	}
+	
+	/* Initialize tempdir from TMPDIR, if available */
+	tde = getenv("TMPDIR");
+	if(tde) tmpdir = tde;
 }
