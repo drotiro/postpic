@@ -273,6 +273,9 @@ Datum   image_new(PG_FUNCTION_ARGS)
 	} else if(ccs == CS_CMYK.oid) {
 		map = "CMYK";
 		iinfo->colorspace = CMYKColorspace;
+	} else if(ccs == CS_GRAY.oid) {
+		map = "PPPI";
+		iinfo->colorspace = GRAYColorspace;
 	} else {
 		elog(ERROR, "Unsupported colorspace %d", color->cs);
 		/* Not needed, just to make the compiler happy */
