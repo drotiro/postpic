@@ -34,7 +34,6 @@ void pp_import_usage(const char * pname)
 		"\t\t\t eg. to insert the image in a table. The signature needs to be:\n"
 		"\t\t\t callback(i image, imgpath varchar, usrdata varchar)\n"
 		"\t-u usrdata\toptional userdata to pass to callback function\n");
-	exit(EXIT_FAILURE);
 }
 
 int	pp_parse_import_options(int * argc, char ** argv[], pp_import_options * opts)
@@ -75,7 +74,6 @@ char * val;
 
 void pp_import(PGconn * conn, const char * file)
 {
-	Oid loid;
 	PGresult * res;
 	char q[BUFSIZE];
 	const char * const * ival = (const char * const *) &val;
@@ -104,7 +102,7 @@ void pp_import(PGconn * conn, const char * file)
 			ival,
 			&len,
 			&binFmt,
-			1);
+			binFmt);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) pp_print_error(PQerrorMessage(conn));
 	PQclear(res);
 	free(val);
@@ -113,22 +111,21 @@ void pp_import(PGconn * conn, const char * file)
 
 int main(int argc, char * argv[])
 {
-	Oid loid;
 	PGconn * conn;
 	char * pname = argv[0];
-	char * file;
 	PGresult   *res;
 	int i;
 	
 	// parse input and test connections
-	if(pp_parse_import_options(&argc, &argv, &opts)) {
+	if((argc==1) || pp_parse_import_options(&argc, &argv, &opts)) {
 		pp_import_usage(pname);
+		return -1;
 	}
 	
 	if(!opts.callback || !argc) {
 		if(!opts.callback) pp_print_error("What should I do with the images? Please use the -c option.");
 		if(!argc) pp_print_error("Please specify at least one file to import.");
-		pp_import_usage(pname);
+		return -1;
 	}
 	
 	conn = pp_connect(&(opts.co));
