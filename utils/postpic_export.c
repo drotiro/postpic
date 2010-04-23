@@ -81,7 +81,7 @@ char * image_name(const char * prefix, int num)
 void pp_export(PGconn * conn, const char * query)
 {
 
-	const int binFmt = 1;
+	const int ascFmt = 0;
 	int len = 0, i;
 	int rows, ncol, icol;
 	char * val;
@@ -97,13 +97,13 @@ void pp_export(PGconn * conn, const char * query)
 			NULL,
 			NULL,
 			NULL,
-			binFmt);
+			ascFmt);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		pp_print_error(PQerrorMessage(conn));
 		PQclear(res);
 		return;
 	}
-	
+
 	/* some check */
 	icol = PQfnumber(res, opts.imagecol);
 	if(icol==-1) {
@@ -123,17 +123,16 @@ void pp_export(PGconn * conn, const char * query)
 	
 	/* fetch the data and save */
 	for (i = 0; i < rows; ++i) {
-		//val = ??
-		//file = ??	
+		val = PQunescapeBytea( PQgetvalue(res, i, icol), &len);
 		if(opts.namecol) file = PQgetvalue(res, i, ncol);
 		else file = image_name(opts.nameprefix, i);
 		fimg = fopen(file, "w");
-		//fwrite(val, 1, len, fimg);
+		fwrite(val, len, 1, fimg);
 		fclose(fimg);
-		//free(val);
+		PQfreemem(val);
+		fprintf(stderr, "INFO: exported file %s\n", file);
 	}
 	PQclear(res);
-	fprintf(stderr, "INFO: exported file %s\n", file);
 }
 
 int main(int argc, char * argv[])
