@@ -27,17 +27,18 @@ typedef struct pp_export_options {
 
 static pp_export_options opts;
 
+#define DEF_IMGCOL "the_img"
 #define NAMESIZE 2048
 static char filenamebuf[NAMESIZE];
 
 void pp_export_usage(const char * pname)
 {
 	pp_print_usage(pname);
-	fprintf(stderr, "Additional options: -i image_column -c name_column -o name_prefix \"select query to execute\"\n"
-		"\t-i image_column\tcolumn containing the images to export\n"
+	fprintf(stderr, "Additional options: [-i image_column -c name_column -o name_prefix] \"select query to execute\"\n"
+		"\t-i image_column\tcolumn containing the images to export, defaults to '%s' \n"
 		"\t-c name_column\tcolumn to use as output file name\n"
 		"\t-o name_prefix\tprefix to use to build output file name\n"
-		"\t\t(use -c or -o)\n");
+		"\t\t(use -c or -o)\n", DEF_IMGCOL);
 }
 
 int	pp_parse_export_options(int * argc, char ** argv[], pp_export_options * opts)
@@ -157,8 +158,8 @@ int main(int argc, char * argv[])
 	}
 
 	if( !opts.imagecol) {
-		pp_print_error("Please use -i to specify column containing images.");
-		return -1;
+		fprintf(stderr, "INFO: no image column, defaulting to '%s'\n", DEF_IMGCOL);
+		opts.imagecol = DEF_IMGCOL;
 	}
 
 	conn = pp_connect(&(opts.co));
