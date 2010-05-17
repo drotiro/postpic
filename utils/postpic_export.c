@@ -75,7 +75,7 @@ int	pp_parse_export_options(int * argc, char ** argv[], pp_export_options * opts
 
 char * image_name(const char * prefix, int num)
 {
-	sprintf(filenamebuf, "%s%3d.jpg", prefix, num);
+	sprintf(filenamebuf, "%s%03d.jpg", prefix, num);
 	return filenamebuf;
 }
 
