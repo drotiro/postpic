@@ -155,6 +155,7 @@ Datum	image_square(PG_FUNCTION_ARGS);
 Datum	image_resize(PG_FUNCTION_ARGS);
 Datum	image_crop(PG_FUNCTION_ARGS);
 Datum	image_rotate(PG_FUNCTION_ARGS);
+Datum	image_draw_text(PG_FUNCTION_ARGS);
 
 /*
  * Aggregate functions
@@ -168,6 +169,7 @@ PPImage *	pp_init_image(Image * gimg);
 // parsing and formatting
 Timestamp	pp_str2timestamp(const char * date);
 char *		pp_timestamp2str(Timestamp ts);
+char *		pp_varchar2str(VarChar * text);
 int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
@@ -464,13 +466,54 @@ Datum   image_square(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(res);		
 }
 
+PG_FUNCTION_INFO_V1(image_draw_text);
+Datum   image_draw_text(PG_FUNCTION_ARGS)
+{
+    PPImage * img, * res;
+    Image * gimg;
+    DrawContext ctx;
+    VarChar * label, * f_family = NULL;
+    char * str;
+    int x = 20, y = 20, f_size = 10;
+    unsigned int na;
+    
+    na = PG_NARGS();    
+    img = PG_GETARG_IMAGE(0);
+    label = PG_GETARG_VARCHAR_P(1);
+    switch(na) {
+    	case 6: //font family and size
+    		f_family = PG_GETARG_VARCHAR_P(4);
+    		f_size = PG_GETARG_INT32(5);
+    		/* fallthrough */
+		case 4: // x and y position
+			x = PG_GETARG_INT32(2);
+			y = PG_GETARG_INT32(3);
+    }
+    gimg = gm_image_from_bytea(&img->imgdata);
+    
+    ctx  = DrawAllocateContext((DrawInfo*)NULL, gimg);
+    if (na==6) {
+		str = pp_varchar2str(f_family);
+    	DrawSetFontFamily(ctx, str);
+    	DrawSetFontSize(ctx, f_size);
+    }
+	str = pp_varchar2str(label);
+    DrawAnnotation(ctx, x, y, (unsigned char*) str);
+    DrawRender(ctx);
+    DrawDestroyContext(ctx);
+    res = pp_init_image(gimg);
+    gm_image_destroy(gimg);
+
+	PG_RETURN_POINTER(res);
+}
+
 PG_FUNCTION_INFO_V1(image_index);
 Datum	image_index(PG_FUNCTION_ARGS)
 {
 	ArrayType * aimgs;
 	Image * gimg, * rimg;
-	int4 tile, offset, sz;
-	int nimgs, i, istart;
+	int4 tile, offset;
+	int sz, nimgs, i, istart;
 	ImageInfo iinfo;
 	MontageInfo minfo;
 	ExceptionInfo ex;
@@ -502,10 +545,7 @@ Datum	image_index(PG_FUNCTION_ARGS)
 	str = palloc(2*INTLEN);
 	sprintf(str, "%dx%d", tile, (nimgs % tile ? nimgs/tile+1 : nimgs/tile));
 	minfo.tile = str;
-	sz = VARSIZE(title) - VARHDRSZ;
-	str = palloc(sz + 1);
-	strncpy(str, VARDATA(title), sz);
-	str[sz]=0;
+	str = pp_varchar2str(title);
 	minfo.title = str;
 	minfo.shadow=1;
 	GetExceptionInfo(&ex);
@@ -741,6 +781,19 @@ char*	pp_timestamp2str(Timestamp ts)
 	sprintf(res, "%d-%.2d-%.2d %.2d:%.2d:%.2d", tm.tm_year, tm.tm_mon, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
 	return res;
+}
+
+char * 	pp_varchar2str(VarChar * text)
+{
+	char * str;
+	int sz;
+
+    sz = VARSIZE(text) - VARHDRSZ;
+    str = palloc(sz + 1);
+    strncpy(str, VARDATA(text), sz);
+    str[sz]=0;
+
+	return str;
 }
 
 float4	pp_parse_float(const char * str)

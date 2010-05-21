@@ -127,6 +127,23 @@ CREATE FUNCTION square ( image, INT )
 	AS '$libdir/postpic', 'image_square'
 	LANGUAGE C IMMUTABLE STRICT;        
 
+CREATE FUNCTION draw_text ( image, VARCHAR )
+    RETURNS image
+    AS '$libdir/postpic', 'image_draw_text'
+    LANGUAGE C IMMUTABLE STRICT;
+
+-- Image, text, x, y
+CREATE FUNCTION draw_text ( image, VARCHAR, INT, INT )
+    RETURNS image
+    AS '$libdir/postpic', 'image_draw_text'
+    LANGUAGE C IMMUTABLE STRICT;
+
+-- Image, text, x, y, font family, font size
+CREATE FUNCTION draw_text ( image, VARCHAR, INT, INT, VARCHAR, INT )
+    RETURNS image
+    AS '$libdir/postpic', 'image_draw_text'
+    LANGUAGE C IMMUTABLE STRICT;
+
 CREATE FUNCTION resize ( image, INT, INT )
 	RETURNS image
     AS '$libdir/postpic', 'image_resize'
