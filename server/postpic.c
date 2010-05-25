@@ -175,12 +175,13 @@ float4		pp_parse_float(const char * str);
 int			pp_parse_int(char * str);
 Oid			pp_parse_cstype(const ColorspaceType t);
 void		pp_parse_color(const char * str, PPColor * color);
-// image (GraphicsMagick) building and destroying
+// To deal easily with GraphicsMagick objects
 Image *		gm_image_from_lob(Oid loid);
 Image *		gm_image_from_bytea(bytea * imgdata);
 char *		gm_image_getattr(Image * img, const char * attr);
 void *		gm_image_to_blob(Image * timg, size_t * blen, ExceptionInfo * ex);
 void		gm_image_destroy(Image *);
+PixelPacket *	gm_ppacket_from_color(const PPColor * color);
 // large objects processing
 void *		lo_readblob(Oid loid, int * len);
 int			lo_size(int32 fd);
@@ -470,6 +471,7 @@ PG_FUNCTION_INFO_V1(image_draw_text);
 Datum   image_draw_text(PG_FUNCTION_ARGS)
 {
     PPImage * img, * res;
+    PPColor * color = NULL;
     Image * gimg;
     DrawContext ctx;
     VarChar * label, * f_family = NULL;
@@ -481,6 +483,9 @@ Datum   image_draw_text(PG_FUNCTION_ARGS)
     img = PG_GETARG_IMAGE(0);
     label = PG_GETARG_VARCHAR_P(1);
     switch(na) {
+    	case 7: //color
+    		color = (PPColor*) PG_GETARG_POINTER(6);
+    		/* fallthrough */
     	case 6: //font family and size
     		f_family = PG_GETARG_VARCHAR_P(4);
     		f_size = PG_GETARG_INT32(5);
@@ -492,10 +497,11 @@ Datum   image_draw_text(PG_FUNCTION_ARGS)
     gimg = gm_image_from_bytea(&img->imgdata);
     
     ctx  = DrawAllocateContext((DrawInfo*)NULL, gimg);
-    if (na==6) {
+    if (na>=6) {
 		str = pp_varchar2str(f_family);
     	DrawSetFontFamily(ctx, str);
     	DrawSetFontSize(ctx, f_size);
+    	if (na>=7) DrawSetFillColor(ctx, gm_ppacket_from_color(color));
     }
 	str = pp_varchar2str(label);
     DrawAnnotation(ctx, x, y, (unsigned char*) str);
@@ -733,6 +739,19 @@ char *	gm_image_getattr(Image * img, const char * attr)
 	const ImageAttribute * attrs = GetImageAttribute(img, attr);
 	if(!attrs) return NULL;
 	return pstrdup(attrs->value);
+}
+
+PixelPacket *   gm_ppacket_from_color(const PPColor * color)
+{
+	PixelPacket * pp = (PixelPacket *)palloc(sizeof(PixelPacket));
+	unsigned int data = ntohl(color->cd);
+	
+	if ((color->cs == CS_RGB.oid) || (color->cs == CS_sRGB.oid)) data = (data << 8);
+	pp->red = (data >> 24) & 0xFF;
+	pp->green = (data >> 16 ) & 0xFF;
+	pp->blue = (data >> 8 ) & 0xFF;
+	pp->opacity = data & 0xFF;
+	return pp;
 }
 
 int		pp_substr2int(char * str, int off, int len)
