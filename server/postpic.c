@@ -28,6 +28,7 @@
 #include <libpq/be-fsstubs.h>
 #include <storage/fd.h>
 /* --- */
+#include <utils/geo_decls.h>
 #include <utils/elog.h>
 #include <utils/builtins.h>
 #include <utils/array.h>
@@ -156,6 +157,7 @@ Datum	image_resize(PG_FUNCTION_ARGS);
 Datum	image_crop(PG_FUNCTION_ARGS);
 Datum	image_rotate(PG_FUNCTION_ARGS);
 Datum	image_draw_text(PG_FUNCTION_ARGS);
+Datum   image_draw_rect(PG_FUNCTION_ARGS);
 
 /*
  * Aggregate functions
@@ -505,6 +507,35 @@ Datum   image_draw_text(PG_FUNCTION_ARGS)
     }
 	str = pp_varchar2str(label);
     DrawAnnotation(ctx, x, y, (unsigned char*) str);
+    DrawRender(ctx);
+    DrawDestroyContext(ctx);
+    res = pp_init_image(gimg);
+    gm_image_destroy(gimg);
+
+	PG_RETURN_POINTER(res);
+}
+
+PG_FUNCTION_INFO_V1(image_draw_rect);
+Datum   image_draw_rect(PG_FUNCTION_ARGS)
+{
+    PPImage * img, * res;
+    PPColor * color = NULL;
+    Image * gimg;
+    DrawContext ctx;
+    BOX * rect;
+    //bool fill;
+    
+    img = PG_GETARG_IMAGE(0);
+    rect = PG_GETARG_BOX_P(1);
+    //fill = PG_GETARG_BOOL(2);
+    color = (PPColor*) PG_GETARG_POINTER(2);
+    
+    gimg = gm_image_from_bytea(&img->imgdata);
+    
+    ctx  = DrawAllocateContext((DrawInfo*)NULL, gimg);
+    DrawSetFillColor(ctx, gm_ppacket_from_color(color));
+    DrawRectangle(ctx, rect->high.x, rect->high.y,
+		rect->low.x, rect->low.y);
     DrawRender(ctx);
     DrawDestroyContext(ctx);
     res = pp_init_image(gimg);

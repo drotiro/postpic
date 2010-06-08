@@ -150,6 +150,11 @@ CREATE FUNCTION draw_text ( image, VARCHAR, INT, INT, VARCHAR, INT, color )
     AS '$libdir/postpic', 'image_draw_text'
     LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION draw_rect ( image, BOX, color )
+    RETURNS image
+    AS '$libdir/postpic', 'image_draw_rect'
+    LANGUAGE C IMMUTABLE STRICT;
+
 CREATE FUNCTION resize ( image, INT, INT )
 	RETURNS image
     AS '$libdir/postpic', 'image_resize'
