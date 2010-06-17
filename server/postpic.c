@@ -29,6 +29,7 @@
 #include <storage/fd.h>
 /* --- */
 #include <utils/geo_decls.h>
+#include <utils/bytea.h>
 #include <utils/elog.h>
 #include <utils/builtins.h>
 #include <utils/array.h>
