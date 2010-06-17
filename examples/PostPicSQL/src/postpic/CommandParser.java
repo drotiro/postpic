@@ -45,7 +45,14 @@ public class CommandParser {
 		CommandParser parser = new CommandParser();
 		parser.connect(args);
 		int res = parser.mainLoop();
+		parser.disconnect();
 		System.exit(res);		
+	}
+
+	private void disconnect() {
+		try {
+			conn.close();
+		} catch (SQLException ignored) {}
 	}
 
 	public int mainLoop() {
