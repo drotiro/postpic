@@ -19,6 +19,7 @@
 /* PG-related includes */
 #include <postgres.h>
 #include <fmgr.h>
+#include <pg_config.h>
 /* -> dates & co */
 #include <utils/datetime.h>
 #include <pgtime.h>
@@ -29,7 +30,9 @@
 #include <storage/fd.h>
 /* --- */
 #include <utils/geo_decls.h>
+#if PG_VERSION_NUM >= 90000
 #include <utils/bytea.h>
+#endif
 #include <utils/elog.h>
 #include <utils/builtins.h>
 #include <utils/array.h>
