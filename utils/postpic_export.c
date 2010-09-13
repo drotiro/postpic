@@ -1,13 +1,23 @@
-/*******************************
- PostPic - An image-enabling
- extension for PostgreSql
-  
- Author:    Domenico Rotiroti
- License:   LGPLv3
- 
- Export images to client file
- system
-*******************************/
+/********************************************************************
+ PostPic - An image-enabling extension for PostgreSql
+ (C) Copyright 2010 Domenico Rotiroti
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as
+ published by the Free Software Foundation, version 3 of the License.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
+
+ A copy of the GNU Lesser General Public License is included in the
+ source distribution of this software.
+
+ postpic_export: 
+ Export images to client file system
+
+********************************************************************/
 
 #include "postpic_utils.h"
 #include <libpq/libpq-fs.h>
@@ -38,7 +48,7 @@ void pp_export_usage(const char * pname)
 		"\t-i image_column\tcolumn containing the images to export, defaults to '%s' \n"
 		"\t-c name_column\tcolumn to use as output file name\n"
 		"\t-o name_prefix\tprefix to use to build output file name\n"
-		"\t\t(use -c or -o)\n", DEF_IMGCOL);
+		"\t(use -c or -o)\n", DEF_IMGCOL);
 }
 
 int	pp_parse_export_options(int * argc, char ** argv[], pp_export_options * opts)
