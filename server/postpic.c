@@ -171,6 +171,7 @@ Datum   image_index(PG_FUNCTION_ARGS);
 /*
  * Internal and GraphicsMagick's
  */
+PPImage *	pp_init_image_full(Image * gimg, void * blob, size_t datalen);
 PPImage *	pp_init_image(Image * gimg);
 // parsing and formatting
 Timestamp	pp_str2timestamp(const char * date);
@@ -205,7 +206,7 @@ Datum	image_in(PG_FUNCTION_ARGS)
 	imgdata = (bytea *) DatumGetPointer(data);
 	gimg = gm_image_from_bytea(imgdata);
 	
-	img = pp_init_image(gimg);
+	img = pp_init_image_full(gimg, VARDATA(imgdata), VARSIZE(imgdata) - VARHDRSZ);
 	gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }
@@ -248,7 +249,7 @@ Datum   image_recv(PG_FUNCTION_ARGS)
 	imgdata  = (bytea *) DatumGetPointer(data);
     gimg = gm_image_from_bytea(imgdata);
 
-    img = pp_init_image(gimg);
+    img = pp_init_image_full(gimg, VARDATA(imgdata), VARSIZE(imgdata) - VARHDRSZ);
     gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }
@@ -901,7 +902,12 @@ void	pp_parse_color(const char * str, PPColor * color)
 	}
 }
 
-PPImage *	pp_init_image(Image * gimg)
+PPImage *	pp_init_image(Image * gimg) 
+{
+	return pp_init_image_full(gimg, NULL, 0);
+}
+
+PPImage *	pp_init_image_full(Image * gimg, void * data, size_t datalen)
 {
 	char * attr;
 	void * blob;
@@ -913,7 +919,12 @@ PPImage *	pp_init_image(Image * gimg)
 
 	//Get gimg's blob
 	GetExceptionInfo(&ex);
-	blob = gm_image_to_blob(gimg, &blen, &ex);
+	if(!data) {
+		blob =gm_image_to_blob(gimg, &blen, &ex);
+	} else {
+		blob = data;
+		blen = datalen;
+	}
 	
 	// We need room for our fixed data + our header + the bytea (data + header):
 	img = (PPImage *) palloc(FIXED_DATA_LEN + blen + 2*VARHDRSZ);
@@ -921,7 +932,7 @@ PPImage *	pp_init_image(Image * gimg)
 	SET_VARSIZE(&img->imgdata, blen + VARHDRSZ);
 	memcpy(VARDATA(&img->imgdata), blob, blen);
 	SET_VARSIZE(img, FIXED_DATA_LEN + blen + 2*VARHDRSZ );
-	free(blob);
+	if(!data) free(blob);
 
 	//Data we have in Image
 	img->width = gimg->columns;
