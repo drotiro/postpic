@@ -1004,6 +1004,8 @@ void _PG_init()
 	int i;
 	char * tde;
 	
+	//TODO: init 1 time only! and get the client path somehow
+	InitializeMagick("/usr/lib/postgresql/9.1/lib/postpic.so");
 	/* Read colorspace Oids */
 	pOid = GetSysCacheOid(NAMESPACENAME,
 		CStringGetDatum("public"), 0, 0, 0);
