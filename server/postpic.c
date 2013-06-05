@@ -127,6 +127,7 @@ Datum	image_out(PG_FUNCTION_ARGS);
 Datum	image_send(PG_FUNCTION_ARGS);
 Datum	image_recv(PG_FUNCTION_ARGS);
 Datum	image_from_large_object(PG_FUNCTION_ARGS);
+Datum	image_from_bytea(PG_FUNCTION_ARGS);
 Datum	image_new(PG_FUNCTION_ARGS);
 
 Datum	color_in(PG_FUNCTION_ARGS);
@@ -226,6 +227,21 @@ Datum	image_from_large_object(PG_FUNCTION_ARGS)
 	PPImage * img;
 	
 	img = pp_init_image(gimg);
+	gm_image_destroy(gimg);
+	PG_RETURN_POINTER(img);
+}
+
+PG_FUNCTION_INFO_V1(image_from_bytea);
+Datum	image_from_bytea(PG_FUNCTION_ARGS)
+{
+	PPImage * img;
+	Image * gimg;
+	bytea * imgdata;
+	
+	imgdata = /*(bytea *)*/ PG_GETARG_BYTEA_P(0);
+	gimg = gm_image_from_bytea(imgdata);
+	
+	img = pp_init_image_full(gimg, VARDATA(imgdata), VARSIZE(imgdata) - VARHDRSZ);
 	gm_image_destroy(gimg);
 	PG_RETURN_POINTER(img);
 }

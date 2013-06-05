@@ -77,6 +77,11 @@ CREATE FUNCTION image_from_large_object( oid )
    AS '$libdir/postpic'
    LANGUAGE C STRICT;
 
+CREATE FUNCTION image_from_bytea( bytea )
+   RETURNS image
+   AS '$libdir/postpic'
+   LANGUAGE C STRICT;
+
 CREATE FUNCTION width ( image )
    RETURNS INT
    AS '$libdir/postpic', 'image_width'
