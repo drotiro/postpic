@@ -32,8 +32,7 @@ This package contains the following:
 
  * __server__: sources for the server extension
  * __utils__: utilities for client-side loading of images, etc.
- * __jdbc__: mapping for the new type, enhances the postgresql jdbc driver
- * __examples__: example programs and sql scripts
+ * __examples__: a sql script to create sample tables and functions
 
 
 Copyright and license
