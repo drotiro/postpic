@@ -54,10 +54,10 @@ typedef struct {
 	char	vl_len_[4];
 	/* FIXED_DATA_BEGIN */
 	Timestamp	date;
-	int4	width;
-	int4	height;
+	int32	width;
+	int32	height;
 	Oid		cspace;
-	int4	iso;
+	int32	iso;
 	float4	f_number;
 	float4	exposure_t;
 	float4	focal_l;
@@ -276,7 +276,7 @@ Datum   image_new(PG_FUNCTION_ARGS)
     PPImage * res;
     Image * gimg, * timg;
     PPColor * color;
-    int4 w, h;
+    int32 w, h;
     ExceptionInfo ex;
     ImageInfo * iinfo;
     char * map;
@@ -356,7 +356,7 @@ PG_FUNCTION_INFO_V1(image_thumbnail);
 Datum   image_thumbnail(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	int4 size, sx, sy;
+	int32 size, sx, sy;
 	PPImage * img, *res;
 	Image * gimg, * timg;
 	
@@ -384,7 +384,7 @@ PG_FUNCTION_INFO_V1(image_resize);
 Datum   image_resize(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
-	int4 sx, sy;
+	int32 sx, sy;
 	PPImage * img, * res;
 	Image * gimg, * timg;
 	
@@ -408,7 +408,7 @@ Datum   image_crop(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
 	RectangleInfo rect;
-	int4 cx, cy, cw, ch;
+	int32 cx, cy, cw, ch;
 	PPImage * img, *res;
 	Image * gimg, * timg;
 	
@@ -459,7 +459,7 @@ Datum   image_square(PG_FUNCTION_ARGS)
 {
 	ExceptionInfo ex;
 	RectangleInfo ri;
-	int4 size, sx, sy;
+	int32 size, sx, sy;
 	PPImage * img, * res;
 	Image * gimg, * timg, * simg;
 	
@@ -570,7 +570,7 @@ Datum	image_index(PG_FUNCTION_ARGS)
 {
 	ArrayType * aimgs;
 	Image * gimg, * rimg;
-	int4 tile, offset;
+	int32 tile, offset;
 	int sz, nimgs, i, istart;
 	ImageInfo iinfo;
 	MontageInfo minfo;
