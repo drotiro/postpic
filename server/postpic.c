@@ -176,7 +176,7 @@ PPImage *	pp_init_image_full(Image * gimg, void * blob, size_t datalen);
 PPImage *	pp_init_image(Image * gimg);
 // parsing and formatting
 Timestamp	pp_str2timestamp(const char * date);
-char *		pp_timestamp2str(Timestamp ts);
+//char *		pp_timestamp2str(Timestamp ts);
 char *		pp_varchar2str(VarChar * text);
 int			pp_substr2int(char * str, int off, int len);
 float4		pp_parse_float(const char * str);
@@ -834,13 +834,14 @@ Timestamp	pp_str2timestamp(const char * edate)
 	return res;
 }
 
+/*
 char*	pp_timestamp2str(Timestamp ts)
 {
-	/* postgres tax */
+	/--* postgres tax *--/
 	int tzp;
 	fsec_t fsec;
 	char *tzn;
-	/* end tax */
+	/--* end tax *--/
 	struct pg_tm tm;
 	char * res; 
 	
@@ -853,7 +854,7 @@ char*	pp_timestamp2str(Timestamp ts)
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
 	return res;
 }
-
+*/
 char * 	pp_varchar2str(VarChar * text)
 {
 	char * str;

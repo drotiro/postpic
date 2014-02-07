@@ -93,8 +93,8 @@ void pp_export(PGconn * conn, const char * query)
 {
 
 	const int ascFmt = 0;
-	int len = 0, i;
-	int rows, ncol, icol;
+	size_t len = 0;
+	int rows, ncol, icol, i;
 	char * val;
 	char * file;
 	PGresult * res;
