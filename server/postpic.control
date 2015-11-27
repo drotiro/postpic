@@ -1,0 +1,5 @@
+comment = 'PostPic is an extension for the open source PostgreSQL dbms that enables image processing inside the database.'
+default_version = '0.9.1'
+module_pathname = '$libdir/postpic'
+requires = 'plpgsql'
+schema = 'public'
