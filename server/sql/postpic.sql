@@ -1,7 +1,6 @@
 /*
  * Definition of our basic type: image
  */
-DROP TYPE image CASCADE;
 CREATE TYPE image; -- shell type
 
 CREATE FUNCTION image_in ( cstring )
@@ -61,11 +60,6 @@ CREATE TYPE color (
 	output = color_out,
 	internallength = 8
 );
-
-/*
- * Make sure plpgsql is in
- */
-CREATE LANGUAGE plpgsql;
 
 CREATE FUNCTION image_new( INT, INT, color )
 	RETURNS image
