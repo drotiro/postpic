@@ -31,3 +31,5 @@ endif
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
+
+LDFLAGS = ${LDFLAGS/-Wl,-as-needed//} ${GMLIBS}
