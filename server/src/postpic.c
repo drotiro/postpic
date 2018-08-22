@@ -975,10 +975,10 @@ int	lo_size(int32 fd)
 {
 	Datum sz;
 	
-	DirectFunctionCall3(lo_lseek, Int32GetDatum(fd), Int32GetDatum(0),
+	DirectFunctionCall3(be_lo_lseek, Int32GetDatum(fd), Int32GetDatum(0),
 		Int32GetDatum(SEEK_END));
-	sz = DirectFunctionCall1(lo_tell, Int32GetDatum(fd));
-	DirectFunctionCall3(lo_lseek, Int32GetDatum(fd), Int32GetDatum(0), 
+	sz = DirectFunctionCall1(be_lo_tell, Int32GetDatum(fd));
+	DirectFunctionCall3(be_lo_lseek, Int32GetDatum(fd), Int32GetDatum(0), 
 		Int32GetDatum(SEEK_SET));
 	return DatumGetInt32(sz);	
 }
@@ -989,7 +989,7 @@ void *  lo_readblob(Oid loid, int * blen)
 	int size;
 	Datum fd_d;
 	int32 fd;
-	fd_d = DirectFunctionCall2(lo_open, ObjectIdGetDatum(loid), 
+	fd_d = DirectFunctionCall2(be_lo_open, ObjectIdGetDatum(loid), 
 		Int32GetDatum(INV_READ));
 	fd = DatumGetInt32(fd_d);
 	size = lo_size(fd);
@@ -1001,7 +1001,7 @@ void *  lo_readblob(Oid loid, int * blen)
 			 errmsg("error reading from large object: %d", loid)));
     }
 	lo_read(fd, buf, size);
-	DirectFunctionCall1(lo_close, Int32GetDatum(fd));
+	DirectFunctionCall1(be_lo_close, Int32GetDatum(fd));
 
 	return buf;	
 }
